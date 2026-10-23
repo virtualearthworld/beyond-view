@@ -87,7 +87,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+
 
 const input=document.getElementById("video");
 const player=document.getElementById("player");
@@ -102,7 +102,7 @@ let renderer=null;
 let scene=null;
 let camera=null;
 let controls=null;
-let splat=null;
+
 let viewerReady=false;
 let viewerLoading=false;
 
@@ -153,63 +153,83 @@ function resizeViewer(){
   renderer.setSize(width,height,false);
 }
 
+function addTree(x,z,scale=1){
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.12*scale,0.18*scale,1.1*scale,8),new THREE.MeshStandardMaterial({color:"#765039"}));
+  trunk.position.set(x,0.55*scale,z); scene.add(trunk);
+  const crown=new THREE.Mesh(new THREE.ConeGeometry(0.72*scale,1.8*scale,9),new THREE.MeshStandardMaterial({color:"#287b4a",roughness:1}));
+  crown.position.set(x,1.8*scale,z); scene.add(crown);
+}
+function addHouse(x,z,color){
+  const walls=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.35,1.6),new THREE.MeshStandardMaterial({color,roughness:1}));
+  walls.position.set(x,0.68,z); scene.add(walls);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(1.35,0.85,4),new THREE.MeshStandardMaterial({color:"#914b38",roughness:1}));
+  roof.rotation.y=Math.PI/4; roof.position.set(x,1.72,z); scene.add(roof);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.62,0.05),new THREE.MeshStandardMaterial({color:"#4b3428"}));
+  door.position.set(x,0.32,z+0.826); scene.add(door);
+}
 async function startViewer(){
   viewer.hidden=false;
   document.body.style.overflow="hidden";
   if(viewerReady){
-    renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+    renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
     resizeViewer();
     return;
   }
   if(viewerLoading) return;
   viewerLoading=true;
-  sceneStatus.textContent="Loading the sample environment. The first load may take a little time…";
+  sceneStatus.textContent="Building the interactive 3D sample…";
   try{
     scene=new THREE.Scene();
-    scene.background=null;
-    camera=new THREE.PerspectiveCamera(60,1,0.01,2000);
-    camera.position.set(0,0,0);
-    renderer=new THREE.WebGLRenderer({antialias:false,alpha:true});
+    scene.background=new THREE.Color("#9bd5f4");
+    scene.fog=new THREE.Fog("#9bd5f4",35,100);
+    camera=new THREE.PerspectiveCamera(55,1,0.1,300);
+    camera.position.set(12,9,15);
+    renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
     renderer.setSize(Math.max(holder.clientWidth,1),Math.max(holder.clientHeight,1),false);
     renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled=true;
     holder.prepend(renderer.domElement);
-    const spark=new SparkRenderer({renderer});
-    scene.add(spark);
-    controls=new OrbitControls(camera,renderer.domElement);
-    controls.enableDamping=true;
-    controls.dampingFactor=0.06;
-    controls.minDistance=0.05;
-    controls.maxDistance=100;
-    splat=new SplatMesh({
-      url:"https://sparkjs.dev/assets/splats/butterfly.spz",
-      onProgress:(event)=>{
-        if(event.lengthComputable && event.total>0){
-          sceneStatus.textContent="Loading sample 3D environment… "+Math.round(event.loaded/event.total*100)+"%";
-        }else{
-          sceneStatus.textContent="Downloading and preparing sample 3D environment…";
-        }
+    scene.add(new THREE.HemisphereLight("#e7f7ff","#527447",2.1));
+    const sun=new THREE.DirectionalLight("#fff1d1",2.2);
+    sun.position.set(-8,15,7); sun.castShadow=true; scene.add(sun);
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(160,160),new THREE.MeshStandardMaterial({color:"#69a85a",roughness:1}));
+    ground.rotation.x=-Math.PI/2; ground.position.y=-0.04; ground.receiveShadow=true; scene.add(ground);
+    // Rolling hills create a clearly three-dimensional horizon.
+    for(const h of [{x:-22,z:-28,s:15,c:"#5c9b64"},{x:18,z:-32,s:18,c:"#76ad69"},{x:34,z:-8,s:13,c:"#4f8d59"},{x:-34,z:4,s:17,c:"#7cb56b"}]){
+      const hill=new THREE.Mesh(new THREE.SphereGeometry(h.s,24,16),new THREE.MeshStandardMaterial({color:h.c,roughness:1}));
+      hill.position.set(h.x,h.s*0.42,h.z); hill.scale.y=0.72; scene.add(hill);
+    }
+    // A curved raised path gives the viewer a strong perspective cue.
+    const roadPoints=[new THREE.Vector3(-3,0.025,18),new THREE.Vector3(-1,0.025,12),new THREE.Vector3(2,0.025,7),new THREE.Vector3(1,0.025,2),new THREE.Vector3(4,0.025,-4),new THREE.Vector3(3,0.025,-12),new THREE.Vector3(7,0.025,-20)];
+    const roadCurve=new THREE.CatmullRomCurve3(roadPoints);
+    const road=new THREE.Mesh(new THREE.TubeGeometry(roadCurve,100,1.05,8,false),new THREE.MeshStandardMaterial({color:"#b7b0a0",roughness:1}));
+    road.position.y=0.02; scene.add(road);
+    addHouse(-5,2,"#f1d6ad"); addHouse(7,-2,"#e7e5dc"); addHouse(10,-7,"#e9c99e");
+    [[-9,8,1.3],[-8,2,1],[-10,-4,1.4],[-7,-10,1.1],[10,8,1.3],[13,3,1],[14,-12,1.4],[0,-15,1.2],[-14,-15,1.4],[17,-20,1.2]].forEach(t=>addTree(t[0],t[1],t[2]));
+    // A few soft clouds make the sky and depth easy to read.
+    for(const cl of [{x:-10,y:13,z:-18},{x:13,y:16,z:-24},{x:24,y:12,z:0}]){
+      const cloud=new THREE.Group();
+      for(const p of [[0,0,0],[1.2,0.2,0],[-1.1,0.1,0],[0.5,0.6,0.2]]){
+        const puff=new THREE.Mesh(new THREE.SphereGeometry(1.05,12,10),new THREE.MeshStandardMaterial({color:"#ffffff",roughness:1}));
+        puff.position.set(p[0],p[1],p[2]); puff.scale.set(1.2,0.65,0.7); cloud.add(puff);
       }
-    });
-    splat.quaternion.set(1,0,0,0);
-    splat.position.set(0,0,-3);
-    scene.add(splat);
-    renderer.setAnimationLoop(()=>renderer.render(scene,camera));
-    await splat.initialized;
-    // Match Spark's documented quick-start framing: camera at the origin,
-    // with the sample splat placed three units in front of it.
-    controls.target.set(0,0,-3);
-    camera.position.set(0,0,0);
-    camera.near=0.01;
-    camera.far=1000;
-    camera.updateProjectionMatrix();
+      cloud.position.set(cl.x,cl.y,cl.z); scene.add(cloud);
+    }
+    controls=new OrbitControls(camera,renderer.domElement);
+    controls.target.set(0,1,0);
+    controls.enableDamping=true; controls.dampingFactor=0.06;
+    controls.minDistance=5; controls.maxDistance=55;
+    controls.maxPolarAngle=Math.PI*0.48;
     controls.update();
-    resizeViewer();
+    document.getElementById("scene-fallback").hidden=true;
     viewerReady=true;
-    sceneStatus.textContent="Sample environment loaded. Drag to look around; scroll or pinch to zoom.";
+    renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+    resizeViewer();
+    sceneStatus.textContent="Interactive 3D sample loaded. Drag to rotate the view; scroll or pinch to zoom. This is a demo landscape, not a reconstruction of your video.";
   }catch(error){
-    console.error("Beyond View sample scene failed to load:",error);
-    sceneStatus.textContent="The sample 3D scene could not load. Check your internet connection and try again. Details are in the browser console.";
+    console.error("Beyond View 3D sample failed:",error);
+    sceneStatus.textContent="The 3D sample could not start in this browser. Try refreshing the page or using a browser with WebGL enabled.";
     if(renderer) renderer.setAnimationLoop(null);
   }finally{
     viewerLoading=false;
@@ -226,7 +246,7 @@ window.addEventListener("resize",resizeViewer);
 window.addEventListener("beforeunload",()=>{
   if(objectUrl) URL.revokeObjectURL(objectUrl);
   if(controls) controls.dispose();
-  if(splat) splat.dispose();
+  
   if(renderer) renderer.dispose();
 });
 </script>
