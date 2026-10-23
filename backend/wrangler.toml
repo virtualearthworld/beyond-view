@@ -1,0 +1,7 @@
+name = "beyond-view-upload-api"
+main = "worker.js"
+compatibility_date = "2026-10-22"
+
+[[r2_buckets]]
+binding = "VIDEO_BUCKET"
+bucket_name = "beyond-view-videos"
