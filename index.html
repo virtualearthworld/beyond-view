@@ -155,8 +155,9 @@ input.addEventListener("change",()=>{
   fileInfo.textContent="Selected: "+file.name+" · "+(file.size/(1024*1024)).toFixed(1)+" MB · Stored only in this browser session";
   clear.hidden=false;
   note.className="status good";
-  note.textContent="Video selected for local preview. Press “Upload video” to send it to the configured backend. ENTER 3D still opens a separate sample; reconstruction is not yet implemented.";
+  note.textContent="Video selected for local preview. You can extract image frames on this device or open the 3D reconstruction workspace.";
   prepareFrames.disabled=false;
+  frameStatus.textContent="Ready to extract frames from "+file.name+".";
 });
 
 
@@ -218,6 +219,7 @@ clear.addEventListener("click",()=>{
   releaseVideo();
   note.className="status";
   note.textContent="Video removed. Choose another video to preview it locally.";
+  frameStatus.textContent="Choose a video first.";
 });
 
 function resizeViewer(){
