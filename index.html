@@ -55,17 +55,18 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <section class="panel" aria-labelledby="main-title">
 <div class="eyebrow">Watch the video or enter its world</div>
 <h1 id="main-title">Don't just watch the world.<br>Enter it.</h1>
-<p>Choose a video from your device to test the first step of Beyond View. Your selected video is previewed in this browser; it is not uploaded to a server.</p>
+<p>Choose a video to preview it, then upload it to the Beyond View processing backend. Server upload becomes available after the backend is deployed and connected.</p>
 <div class="actions">
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
+<button id="upload" type="button" class="secondary">Upload video</button>
 <button id="enter" type="button">ENTER 3D</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
 <p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
 <div id="file-info" class="file-info" aria-live="polite"></div>
 <video id="player" controls playsinline preload="metadata"></video>
-<div id="note" class="status" role="status" aria-live="polite">The 3D viewer will open a separate sample environment. It is not created from your selected video.</div>
+<div id="note" class="status" role="status" aria-live="polite">Choose a video to preview it. Server upload requires the separate backend to be deployed and configured. 3D reconstruction is not implemented yet.</div>
 <details>
 <summary>Tips for recording a future 3D scene</summary>
 <ul class="guide">
@@ -77,7 +78,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <p class="small">These tips can help reconstruction, but they do not guarantee that a video can produce a complete walkable 3D scene.</p>
 </details>
 </section>
-<footer>Early prototype · Local video preview · Sample 3D viewer test · No accounts or video-to-3D conversion yet</footer>
+<footer>Early prototype · Local preview · Optional server upload · Video-to-3D reconstruction not yet implemented</footer>
 </main>
 <section id="viewer" hidden aria-label="Sample 3D viewer">
 <div class="viewer-bar"><div><div class="viewer-title">Beyond View · Sample 3D</div><div class="viewer-subtitle">Interactive Gaussian Splatting environment</div></div><button id="close-viewer" type="button">Close viewer</button></div>
@@ -90,6 +91,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 
 const input=document.getElementById("video");
+const uploadButton=document.getElementById("upload");
 const player=document.getElementById("player");
 const note=document.getElementById("note");
 const fileInfo=document.getElementById("file-info");
@@ -103,6 +105,8 @@ let scene=null;
 let camera=null;
 let controls=null;
 
+let selectedFile=null;
+let uploadInProgress=false;
 let viewerReady=false;
 let viewerLoading=false;
 
@@ -116,6 +120,9 @@ function releaseVideo(){
   fileInfo.textContent="";
   clear.hidden=true;
   input.value="";
+  selectedFile=null;
+  uploadButton.disabled=false;
+  uploadButton.textContent="Upload video";
 }
 
 input.addEventListener("change",()=>{
@@ -128,6 +135,7 @@ input.addEventListener("change",()=>{
     return;
   }
   releaseVideo();
+  selectedFile=file;
   objectUrl=URL.createObjectURL(file);
   player.src=objectUrl;
   player.style.display="block";
@@ -135,7 +143,50 @@ input.addEventListener("change",()=>{
   fileInfo.textContent="Selected: "+file.name+" · "+(file.size/(1024*1024)).toFixed(1)+" MB · Stored only in this browser session";
   clear.hidden=false;
   note.className="status good";
-  note.textContent="Video selected. Press Play to preview it. ENTER 3D opens a separate sample environment; it does not convert this video.";
+  note.textContent="Video selected for local preview. Press “Upload video” to send it to the configured backend. ENTER 3D still opens a separate sample; reconstruction is not yet implemented.";
+  uploadButton.disabled=false;
+});
+
+
+uploadButton.addEventListener("click",async()=>{
+  if(!selectedFile){
+    note.className="status";
+    note.textContent="Choose a video first.";
+    return;
+  }
+  const apiBase=(window.BEYOND_VIEW_UPLOAD_API||"").trim().replace(/\\/$/,"");
+  if(!apiBase){
+    note.className="status";
+    note.textContent="Server upload is not connected yet. The upload backend code is in the GitHub project, but it must be deployed and its API address added to config.js before this button can send files.";
+    return;
+  }
+  if(uploadInProgress) return;
+  if(selectedFile.size>25*1024*1024){
+    note.className="status";
+    note.textContent="This prototype accepts videos up to 25 MB. Choose a shorter or smaller video.";
+    return;
+  }
+  uploadInProgress=true;
+  uploadButton.disabled=true;
+  uploadButton.textContent="Uploading…";
+  note.className="status";
+  note.textContent="Uploading video to the Beyond View backend…";
+  try{
+    const form=new FormData();
+    form.append("video",selectedFile,selectedFile.name);
+    const response=await fetch(apiBase+"/api/upload",{method:"POST",body:form});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||("Upload failed ("+response.status+")."));
+    note.className="status good";
+    note.textContent="Upload saved successfully. Upload ID: "+data.uploadId+". 3D reconstruction status: "+(data.reconstructionStatus||"not_started")+". The video is stored, but it has not been converted to 3D.";
+  }catch(error){
+    note.className="status";
+    note.textContent="Upload failed: "+error.message+" Check the backend URL and deployment.";
+  }finally{
+    uploadInProgress=false;
+    uploadButton.disabled=false;
+    uploadButton.textContent="Upload video";
+  }
 });
 
 clear.addEventListener("click",()=>{
