@@ -49,6 +49,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","@sparkjsdev/spark":"https://sparkjs.dev/releases/spark/2.4.0/spark.module.js"}}
 </script>
 <script src="./config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 <header>Beyond <span>View</span></header>
@@ -56,18 +57,27 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <section class="panel" aria-labelledby="main-title">
 <div class="eyebrow">Watch the video or enter its world</div>
 <h1 id="main-title">Don't just watch the world.<br>Enter it.</h1>
-<p>Choose a video to preview it, then upload it to the Beyond View processing backend. Server upload becomes available after the backend is deployed and connected.</p>
+<p>Choose a video from your device. Beyond View can prepare image frames in your browser, then open the in-app 3D reconstruction workspace. Your video stays on your device during frame preparation.</p>
 <div class="actions">
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
-<button id="upload" type="button" class="secondary">Upload video</button>
+<button id="prepare-frames" type="button" class="secondary" disabled>Prepare frames for 3D</button>
+<button id="open-engine" type="button" class="secondary">Open 3D workspace</button>
 <button id="enter" type="button">ENTER 3D</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
 <p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
 <div id="file-info" class="file-info" aria-live="polite"></div>
 <video id="player" controls playsinline preload="metadata"></video>
-<div id="note" class="status" role="status" aria-live="polite">Choose a video to preview it. Server upload requires the separate backend to be deployed and configured. 3D reconstruction is not implemented yet.</div>
+<div id="note" class="status" role="status" aria-live="polite">Choose a video to preview it. Frame preparation runs locally. The reconstruction workspace uses your device and may require a compatible browser and graphics hardware.</div>
+<div id="frame-panel" class="status" style="margin-top:12px">
+<strong>Prepare a video for reconstruction</strong><p class="small" style="margin:6px 0 10px;color:inherit">Extract one image every <select id="frame-interval" aria-label="Frame extraction interval" style="background:#10131c;color:#fff;border:1px solid #566176;border-radius:8px;padding:5px"><option value="1">1 second</option><option value="2" selected>2 seconds</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select>. A ZIP of JPG frames will be saved to your device.</p>
+<div id="frame-status" class="small" aria-live="polite">Choose a video first.</div>
+</div>
+<div id="engine-panel" hidden style="margin-top:18px">
+<strong>3D reconstruction workspace</strong><p class="small">This embeds the browser-based Gausify Orbit workspace used by Virtual Earth. It runs separately from this page and has not yet been fully integrated into Beyond View's video feed.</p>
+<iframe id="engine-frame" title="Beyond View 3D reconstruction workspace" loading="lazy" allow="fullscreen; webgpu; xr-spatial-tracking; pointer-lock" style="width:100%;height:min(85vh,900px);min-height:620px;border:1px solid #30384a;border-radius:14px;background:#071321" src="https://virtualearthworld.github.io/Virtual_earth/immersive-engine/index.html"></iframe>
+</div>
 <details>
 <summary>Tips for recording a future 3D scene</summary>
 <ul class="guide">
@@ -79,7 +89,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <p class="small">These tips can help reconstruction, but they do not guarantee that a video can produce a complete walkable 3D scene.</p>
 </details>
 </section>
-<footer>Early prototype · Local preview · Optional server upload · Video-to-3D reconstruction not yet implemented</footer>
+<footer>Early prototype · Local video preview · Browser-based frame preparation · Embedded 3D workspace</footer>
 </main>
 <section id="viewer" hidden aria-label="Sample 3D viewer">
 <div class="viewer-bar"><div><div class="viewer-title">Beyond View · Sample 3D</div><div class="viewer-subtitle">Interactive Gaussian Splatting environment</div></div><button id="close-viewer" type="button">Close viewer</button></div>
@@ -92,7 +102,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 
 const input=document.getElementById("video");
-const uploadButton=document.getElementById("upload");
+const prepareFrames=document.getElementById("prepare-frames");
+const frameStatus=document.getElementById("frame-status");
+const enginePanel=document.getElementById("engine-panel");
 const player=document.getElementById("player");
 const note=document.getElementById("note");
 const fileInfo=document.getElementById("file-info");
@@ -122,8 +134,7 @@ function releaseVideo(){
   clear.hidden=true;
   input.value="";
   selectedFile=null;
-  uploadButton.disabled=false;
-  uploadButton.textContent="Upload video";
+  prepareFrames.disabled=true;
 }
 
 input.addEventListener("change",()=>{
@@ -145,51 +156,64 @@ input.addEventListener("change",()=>{
   clear.hidden=false;
   note.className="status good";
   note.textContent="Video selected for local preview. Press “Upload video” to send it to the configured backend. ENTER 3D still opens a separate sample; reconstruction is not yet implemented.";
-  uploadButton.disabled=false;
+  prepareFrames.disabled=false;
 });
 
 
-uploadButton.addEventListener("click",async()=>{
-  if(!selectedFile){
-    note.className="status";
-    note.textContent="Choose a video first.";
-    return;
-  }
-  const apiBase=(window.BEYOND_VIEW_UPLOAD_API||"").trim().replace(/\/$/,"");
-  if(!apiBase){
-    note.className="status";
-    note.textContent="Server upload is not connected yet. The upload backend code is in the GitHub project, but it must be deployed and its API address added to config.js before this button can send files.";
-    return;
-  }
-  if(uploadInProgress) return;
-  if(selectedFile.size>25*1024*1024){
-    note.className="status";
-    note.textContent="This prototype accepts videos up to 25 MB. Choose a shorter or smaller video.";
-    return;
-  }
-  uploadInProgress=true;
-  uploadButton.disabled=true;
-  uploadButton.textContent="Uploading…";
-  note.className="status";
-  note.textContent="Uploading video to the Beyond View backend…";
+document.getElementById("open-engine").addEventListener("click",()=>{
+  enginePanel.hidden=false;
+  enginePanel.scrollIntoView({behavior:"smooth",block:"start"});
+});
+prepareFrames.addEventListener("click",async()=>{
+  if(!selectedFile){frameStatus.textContent="Choose a video first.";return;}
+  if(!window.JSZip){frameStatus.textContent="The ZIP helper could not load. Check your internet connection and refresh.";return;}
+  prepareFrames.disabled=true;
+  const interval=Number(document.getElementById("frame-interval").value)||2;
   try{
-    const form=new FormData();
-    form.append("video",selectedFile,selectedFile.name);
-    const response=await fetch(apiBase+"/api/upload",{method:"POST",body:form});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(data.error||("Upload failed ("+response.status+")."));
-    note.className="status good";
-    note.textContent="Upload saved successfully. Upload ID: "+data.uploadId+". 3D reconstruction status: "+(data.reconstructionStatus||"not_started")+". The video is stored, but it has not been converted to 3D.";
-  }catch(error){
-    note.className="status";
-    note.textContent="Upload failed: "+error.message+" Check the backend URL and deployment.";
-  }finally{
-    uploadInProgress=false;
-    uploadButton.disabled=false;
-    uploadButton.textContent="Upload video";
-  }
+    const video=player;
+    await new Promise((resolve,reject)=>{
+      if(video.readyState>=1 && Number.isFinite(video.duration)){resolve();return;}
+      const ok=()=>{cleanup();resolve();}, bad=()=>{cleanup();reject(new Error("The browser could not read this video."));};
+      const cleanup=()=>{video.removeEventListener("loadedmetadata",ok);video.removeEventListener("error",bad);};
+      video.addEventListener("loadedmetadata",ok,{once:true});video.addEventListener("error",bad,{once:true});
+    });
+    const duration=video.duration;
+    if(!Number.isFinite(duration)||duration<=0)throw new Error("Video duration could not be read.");
+    const times=[];
+    for(let t=0;t<duration && times.length<80;t+=interval)times.push(t);
+    if(!times.length)times.push(0);
+    const canvas=document.createElement("canvas");
+    const width=Math.min(video.videoWidth||1280,1280);
+    const height=Math.max(1,Math.round(width*(video.videoHeight||720)/(video.videoWidth||1280)));
+    canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext("2d");
+    if(!ctx)throw new Error("Canvas is not available in this browser.");
+    const zip=new JSZip();const folder=zip.folder("beyond-view-frames");
+    for(let i=0;i<times.length;i++){
+      frameStatus.textContent="Extracting frame "+(i+1)+" of "+times.length+"…";
+      await new Promise((resolve,reject)=>{
+        const onSeek=()=>{cleanup();resolve();};
+        const onError=()=>{cleanup();reject(new Error("Could not seek to video frame."));};
+        const cleanup=()=>{video.removeEventListener("seeked",onSeek);video.removeEventListener("error",onError);};
+        video.addEventListener("seeked",onSeek,{once:true});
+        video.addEventListener("error",onError,{once:true});
+        try{video.currentTime=times[i];if(Math.abs(video.currentTime-times[i])<0.01){cleanup();resolve();}}catch(e){cleanup();reject(e);}
+      });
+      ctx.drawImage(video,0,0,width,height);
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.9));
+      if(!blob)throw new Error("Could not export a JPG frame.");
+      folder.file("frame_"+String(i+1).padStart(3,"0")+".jpg",blob);
+    }
+    folder.file("README.txt","Beyond View video frame extraction\nSource: "+selectedFile.name+"\nInterval: "+interval+" seconds\n\nThese are extracted JPG frames, not a completed 3D reconstruction.");
+    frameStatus.textContent="Creating ZIP…";
+    const blob=await zip.generateAsync({type:"blob"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download="beyond-view-frames.zip";document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    frameStatus.textContent="Done: saved "+times.length+" image frames in beyond-view-frames.zip. These frames are ready as input for a reconstruction workflow.";
+  }catch(error){frameStatus.textContent="Could not prepare frames: "+(error.message||"unknown error");}
+  finally{prepareFrames.disabled=!selectedFile;}
 });
-
 clear.addEventListener("click",()=>{
   releaseVideo();
   note.className="status";
