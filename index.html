@@ -36,8 +36,11 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 .viewer-title{font-weight:800}
 .viewer-subtitle{font-size:.8rem;color:#aab3c5}
 #close-viewer{background:transparent;color:#fff;border:1px solid #566176;min-height:40px;padding:8px 14px}
-#scene-holder{position:relative;flex:1;min-height:0}
-#scene-holder canvas{display:block;width:100%;height:100%}
+#scene-holder{position:relative;flex:1;min-height:0;overflow:hidden;background:#10131c}
+#scene-fallback{position:absolute;inset:0;display:grid;place-items:center;background:#10131c}
+#scene-fallback img{width:100%;height:100%;object-fit:cover;display:block}
+#scene-fallback span{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:8px;background:#10131ce8;color:#fff;font-size:.8rem}
+#scene-holder canvas{position:absolute;inset:0;display:block;width:100%;height:100%;background:transparent}
 #scene-status{position:absolute;left:12px;bottom:12px;max-width:min(520px,calc(100% - 24px));padding:10px 13px;border-radius:10px;background:#10131ce8;color:#d9e2f1;font-size:.85rem}
 .viewer-help{padding:9px 14px;background:#10131c;color:#9ba8bd;font-size:.8rem}
 @media(max-width:520px){.actions>*{width:100%}.panel{border-radius:18px}.viewer-subtitle{max-width:55vw}}
@@ -78,7 +81,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 </main>
 <section id="viewer" hidden aria-label="Sample 3D viewer">
 <div class="viewer-bar"><div><div class="viewer-title">Beyond View · Sample 3D</div><div class="viewer-subtitle">Interactive Gaussian Splatting environment</div></div><button id="close-viewer" type="button">Close viewer</button></div>
-<div id="scene-holder"><div id="scene-status" role="status" aria-live="polite">Preparing the sample 3D environment…</div></div>
+<div id="scene-holder"><div id="scene-fallback" aria-label="Sample environment preview"><img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&amp;fit=crop&amp;w=1800&amp;q=85" alt="Scenic outdoor landscape preview"><span>Visual preview · 3D scene loads on top</span></div><div id="scene-status" role="status" aria-live="polite">Preparing the sample 3D environment…</div></div>
 <div class="viewer-help">Drag to look around · Scroll or pinch to zoom · This is a sample scene, not a conversion of your video.</div>
 </section>
 <script type="module">
@@ -163,10 +166,10 @@ async function startViewer(){
   sceneStatus.textContent="Loading the sample environment. The first load may take a little time…";
   try{
     scene=new THREE.Scene();
-    scene.background=new THREE.Color("#090c13");
+    scene.background=null;
     camera=new THREE.PerspectiveCamera(60,1,0.01,2000);
     camera.position.set(0,0,0);
-    renderer=new THREE.WebGLRenderer({antialias:false,alpha:false});
+    renderer=new THREE.WebGLRenderer({antialias:false,alpha:true});
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
     renderer.setSize(Math.max(holder.clientWidth,1),Math.max(holder.clientHeight,1),false);
     renderer.outputColorSpace=THREE.SRGBColorSpace;
