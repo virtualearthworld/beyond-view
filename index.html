@@ -30,8 +30,21 @@ summary{font-weight:750;cursor:pointer}
 .guide{padding-left:20px;color:var(--muted)}
 .small{font-size:.88rem}
 footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
-@media(max-width:520px){.actions>*{width:100%}.panel{border-radius:18px}}
+[hidden]{display:none!important}
+#viewer{position:fixed;inset:0;z-index:10;background:#090c13;display:flex;flex-direction:column}
+.viewer-bar{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #30384a;background:#10131c}
+.viewer-title{font-weight:800}
+.viewer-subtitle{font-size:.8rem;color:#aab3c5}
+#close-viewer{background:transparent;color:#fff;border:1px solid #566176;min-height:40px;padding:8px 14px}
+#scene-holder{position:relative;flex:1;min-height:0}
+#scene-holder canvas{display:block;width:100%;height:100%}
+#scene-status{position:absolute;left:12px;bottom:12px;max-width:min(520px,calc(100% - 24px));padding:10px 13px;border-radius:10px;background:#10131ce8;color:#d9e2f1;font-size:.85rem}
+.viewer-help{padding:9px 14px;background:#10131c;color:#9ba8bd;font-size:.8rem}
+@media(max-width:520px){.actions>*{width:100%}.panel{border-radius:18px}.viewer-subtitle{max-width:55vw}}
 </style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","@sparkjsdev/spark":"https://sparkjs.dev/releases/spark/2.4.0/spark.module.js"}}
+</script>
 </head>
 <body>
 <header>Beyond <span>View</span></header>
@@ -43,13 +56,13 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <div class="actions">
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
-<button id="enter" class="secondary" type="button">ENTER 3D</button>
+<button id="enter" type="button">ENTER 3D</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
 <p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
 <div id="file-info" class="file-info" aria-live="polite"></div>
 <video id="player" controls playsinline preload="metadata"></video>
-<div id="note" class="status" role="status" aria-live="polite">3D reconstruction is not connected yet. ENTER 3D will not open a reconstructed world at this stage.</div>
+<div id="note" class="status" role="status" aria-live="polite">The 3D viewer will open a separate sample environment. It is not created from your selected video.</div>
 <details>
 <summary>Tips for recording a future 3D scene</summary>
 <ul class="guide">
@@ -61,62 +74,158 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <p class="small">These tips can help reconstruction, but they do not guarantee that a video can produce a complete walkable 3D scene.</p>
 </details>
 </section>
-<footer>Early prototype · Video preview only · No account or 3D reconstruction yet</footer>
+<footer>Early prototype · Local video preview · Sample 3D viewer test · No accounts or video-to-3D conversion yet</footer>
 </main>
-<script>
-const input = document.getElementById('video');
-const player = document.getElementById('player');
-const note = document.getElementById('note');
-const fileInfo = document.getElementById('file-info');
-const enter = document.getElementById('enter');
-const clear = document.getElementById('clear');
-let objectUrl = null;
+<section id="viewer" hidden aria-label="Sample 3D viewer">
+<div class="viewer-bar"><div><div class="viewer-title">Beyond View · Sample 3D</div><div class="viewer-subtitle">Interactive Gaussian Splatting environment</div></div><button id="close-viewer" type="button">Close viewer</button></div>
+<div id="scene-holder"><div id="scene-status" role="status" aria-live="polite">Preparing the sample 3D environment…</div></div>
+<div class="viewer-help">Drag to look around · Scroll or pinch to zoom · This is a sample scene, not a conversion of your video.</div>
+</section>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 
-function releaseVideo() {
-  if (objectUrl) URL.revokeObjectURL(objectUrl);
-  objectUrl = null;
-  player.removeAttribute('src');
+const input=document.getElementById("video");
+const player=document.getElementById("player");
+const note=document.getElementById("note");
+const fileInfo=document.getElementById("file-info");
+const clear=document.getElementById("clear");
+const viewer=document.getElementById("viewer");
+const holder=document.getElementById("scene-holder");
+const sceneStatus=document.getElementById("scene-status");
+let objectUrl=null;
+let renderer=null;
+let scene=null;
+let camera=null;
+let controls=null;
+let splat=null;
+let viewerReady=false;
+let viewerLoading=false;
+
+function releaseVideo(){
+  if(objectUrl) URL.revokeObjectURL(objectUrl);
+  objectUrl=null;
+  player.removeAttribute("src");
   player.load();
-  player.style.display = 'none';
-  fileInfo.style.display = 'none';
-  fileInfo.textContent = '';
-  clear.hidden = true;
-  input.value = '';
+  player.style.display="none";
+  fileInfo.style.display="none";
+  fileInfo.textContent="";
+  clear.hidden=true;
+  input.value="";
 }
 
-input.addEventListener('change', () => {
-  const file = input.files && input.files[0];
-  if (!file) return;
-  if (!file.type.startsWith('video/')) {
+input.addEventListener("change",()=>{
+  const file=input.files && input.files[0];
+  if(!file) return;
+  if(!file.type.startsWith("video/")){
     releaseVideo();
-    note.className = 'status';
-    note.textContent = 'Please choose a video file, such as MP4 or MOV.';
+    note.className="status";
+    note.textContent="Please choose a video file, such as MP4 or MOV.";
     return;
   }
   releaseVideo();
-  objectUrl = URL.createObjectURL(file);
-  player.src = objectUrl;
-  player.style.display = 'block';
-  fileInfo.style.display = 'block';
-  fileInfo.textContent = 'Selected: ' + file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(1) + ' MB · Stored only in this browser session';
-  clear.hidden = false;
-  note.className = 'status good';
-  note.textContent = 'Video selected. Press Play to preview it. No upload or 3D conversion has occurred.';
+  objectUrl=URL.createObjectURL(file);
+  player.src=objectUrl;
+  player.style.display="block";
+  fileInfo.style.display="block";
+  fileInfo.textContent="Selected: "+file.name+" · "+(file.size/(1024*1024)).toFixed(1)+" MB · Stored only in this browser session";
+  clear.hidden=false;
+  note.className="status good";
+  note.textContent="Video selected. Press Play to preview it. ENTER 3D opens a separate sample environment; it does not convert this video.";
 });
 
-clear.addEventListener('click', () => {
+clear.addEventListener("click",()=>{
   releaseVideo();
-  note.className = 'status';
-  note.textContent = 'Video removed. Choose another video to preview it locally.';
+  note.className="status";
+  note.textContent="Video removed. Choose another video to preview it locally.";
 });
 
-enter.addEventListener('click', () => {
-  note.className = 'status';
-  note.textContent = 'The 3D viewer is not connected yet. The next technical milestone is to load a real sample 3D scene in the browser.';
-});
+function resizeViewer(){
+  if(!renderer || !camera) return;
+  const width=Math.max(holder.clientWidth,1);
+  const height=Math.max(holder.clientHeight,1);
+  camera.aspect=width/height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width,height,false);
+}
 
-window.addEventListener('beforeunload', () => {
-  if (objectUrl) URL.revokeObjectURL(objectUrl);
+async function startViewer(){
+  viewer.hidden=false;
+  document.body.style.overflow="hidden";
+  if(viewerReady){
+    renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+    resizeViewer();
+    return;
+  }
+  if(viewerLoading) return;
+  viewerLoading=true;
+  sceneStatus.textContent="Loading the sample environment. The first load may take a little time…";
+  try{
+    scene=new THREE.Scene();
+    scene.background=new THREE.Color("#090c13");
+    camera=new THREE.PerspectiveCamera(60,1,0.01,2000);
+    camera.position.set(0,0,3);
+    renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    renderer.setSize(Math.max(holder.clientWidth,1),Math.max(holder.clientHeight,1),false);
+    renderer.outputColorSpace=THREE.SRGBColorSpace;
+    holder.prepend(renderer.domElement);
+    const spark=new SparkRenderer({renderer});
+    scene.add(spark);
+    controls=new OrbitControls(camera,renderer.domElement);
+    controls.enableDamping=true;
+    controls.dampingFactor=0.06;
+    controls.minDistance=0.05;
+    controls.maxDistance=100;
+    splat=new SplatMesh({
+      url:"https://sparkjs.dev/assets/splats/snow-street.spz",
+      onProgress:(event)=>{
+        if(event.lengthComputable && event.total>0){
+          sceneStatus.textContent="Loading sample 3D environment… "+Math.round(event.loaded/event.total*100)+"%";
+        }else{
+          sceneStatus.textContent="Downloading and preparing sample 3D environment…";
+        }
+      }
+    });
+    splat.quaternion.set(1,0,0,0);
+    scene.add(splat);
+    renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+    await splat.initialized;
+    const bounds=splat.getBoundingBox();
+    const center=bounds.getCenter(new THREE.Vector3());
+    const sphere=bounds.getBoundingSphere(new THREE.Sphere());
+    const distance=Math.max(sphere.radius*2.4,0.5);
+    controls.target.copy(center);
+    camera.position.copy(center).add(new THREE.Vector3(0,0,distance));
+    camera.near=Math.max(distance/1000,0.01);
+    camera.far=Math.max(distance*100,100);
+    camera.updateProjectionMatrix();
+    controls.update();
+    resizeViewer();
+    viewerReady=true;
+    sceneStatus.textContent="Sample environment loaded. Drag to look around; scroll or pinch to zoom.";
+  }catch(error){
+    console.error("Beyond View sample scene failed to load:",error);
+    sceneStatus.textContent="The sample 3D scene could not load. Check your internet connection and try again. Details are in the browser console.";
+    if(renderer) renderer.setAnimationLoop(null);
+  }finally{
+    viewerLoading=false;
+  }
+}
+
+document.getElementById("enter").addEventListener("click",startViewer);
+document.getElementById("close-viewer").addEventListener("click",()=>{
+  viewer.hidden=true;
+  document.body.style.overflow="";
+  if(renderer) renderer.setAnimationLoop(null);
+});
+window.addEventListener("resize",resizeViewer);
+window.addEventListener("beforeunload",()=>{
+  if(objectUrl) URL.revokeObjectURL(objectUrl);
+  if(controls) controls.dispose();
+  if(splat) splat.dispose();
+  if(renderer) renderer.dispose();
 });
 </script>
 </body>
