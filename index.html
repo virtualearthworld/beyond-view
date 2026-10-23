@@ -193,12 +193,14 @@ prepareFrames.addEventListener("click",async()=>{
     for(let i=0;i<times.length;i++){
       frameStatus.textContent="Extracting frame "+(i+1)+" of "+times.length+"…";
       await new Promise((resolve,reject)=>{
+        const targetTime=times[i];
+        if(video.readyState>=2 && Math.abs(video.currentTime-targetTime)<0.01){resolve();return;}
         const onSeek=()=>{cleanup();resolve();};
         const onError=()=>{cleanup();reject(new Error("Could not seek to video frame."));};
         const cleanup=()=>{video.removeEventListener("seeked",onSeek);video.removeEventListener("error",onError);};
         video.addEventListener("seeked",onSeek,{once:true});
         video.addEventListener("error",onError,{once:true});
-        try{video.currentTime=times[i];if(Math.abs(video.currentTime-times[i])<0.01){cleanup();resolve();}}catch(e){cleanup();reject(e);}
+        try{video.currentTime=targetTime;}catch(e){cleanup();reject(e);}
       });
       ctx.drawImage(video,0,0,width,height);
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.9));
