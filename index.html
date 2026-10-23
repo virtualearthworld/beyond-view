@@ -3,7 +3,121 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Beyond View</title>
-<style>body{margin:0;background:#10131c;color:#f6f8fc;font:16px system-ui,sans-serif}header{padding:20px;border-bottom:1px solid #30384a;font-size:1.3rem;font-weight:800}header span{color:#8be9df}main{max-width:760px;margin:40px auto;padding:20px}.panel{padding:28px;border:1px solid #30384a;border-radius:20px;background:#191e2a}h1{font-size:clamp(2rem,7vw,4rem);line-height:1.05}p{color:#aab3c5;line-height:1.6}button,label{display:inline-block;background:#8be9df;color:#102326;border:0;border-radius:999px;padding:12px 18px;font-weight:700;cursor:pointer}input{display:block;margin-top:16px;max-width:100%}.note{margin-top:18px;padding:12px;border-radius:10px;background:#302719;color:#ffdc9b;font-size:.9rem}</style>
+<meta name="theme-color" content="#10131c">
+<title>Beyond View — Watch or Enter</title>
+<style>
+:root{color-scheme:dark;--bg:#10131c;--panel:#191e2a;--line:#30384a;--text:#f6f8fc;--muted:#aab3c5;--accent:#8be9df}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#20283b 0,var(--bg) 58%);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:18px clamp(18px,5vw,48px);border-bottom:1px solid var(--line);font-size:1.2rem;font-weight:800;letter-spacing:.02em}
+header span{color:var(--accent)}
+main{max-width:900px;margin:clamp(24px,6vw,64px) auto;padding:0 18px 48px}
+.panel{padding:clamp(22px,5vw,42px);border:1px solid var(--line);border-radius:24px;background:rgba(25,30,42,.94);box-shadow:0 24px 80px #0003}
+.eyebrow{color:var(--accent);font-size:.78rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+h1{font-size:clamp(2.3rem,7vw,4.6rem);line-height:1.02;letter-spacing:-.045em;margin:12px 0 18px}
+p{color:var(--muted);line-height:1.65}
+.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:24px 0 12px}
+button,.file-label{display:inline-flex;align-items:center;justify-content:center;min-height:46px;background:var(--accent);color:#102326;border:0;border-radius:999px;padding:12px 19px;font:inherit;font-weight:800;cursor:pointer;text-decoration:none}
+button:focus-visible,.file-label:focus-within,input:focus-visible,summary:focus-visible{outline:3px solid white;outline-offset:3px}
+button.secondary{background:transparent;color:var(--text);border:1px solid #566176}
+input[type=file]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+#player{display:none;width:100%;max-height:60vh;margin-top:22px;background:#080a10;border-radius:14px}
+.file-info{display:none;margin-top:12px;font-size:.9rem;color:var(--muted);overflow-wrap:anywhere}
+.status{margin-top:22px;padding:14px 16px;border-radius:12px;background:#302719;color:#ffdc9b;font-size:.93rem}
+.status.good{background:#15312f;color:#a9fff2}
+details{margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+summary{font-weight:750;cursor:pointer}
+.guide{padding-left:20px;color:var(--muted)}
+.small{font-size:.88rem}
+footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
+@media(max-width:520px){.actions>*{width:100%}.panel{border-radius:18px}}
+</style>
 </head>
-<body><header>Beyond <span>View</span></header><main><div class="panel"><p>DON'T JUST WATCH THE WORLD. ENTER IT.</p><h1>Watch the video.<br>Or enter its world.</h1><p>This is the first browser prototype for Beyond View. Choose a video from your device to preview it locally.</p><label for="video">Choose a video</label><input id="video" type="file" accept="video/*"><video id="player" controls playsinline style="display:none;width:100%;margin-top:20px"></video><p><button id="enter">ENTER 3D</button></p><div class="note" id="note">3D reconstruction is not connected yet. We will test a real sample 3D scene in a later step.</div></div></main><script>const input=document.getElementById('video'),player=document.getElementById('player');let url;input.addEventListener('change',()=>{if(!input.files[0])return;if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(input.files[0]);player.src=url;player.style.display='block';});document.getElementById('enter').addEventListener('click',()=>{document.getElementById('note').textContent='The 3D viewer is not connected yet. This button is a placeholder until a real reconstructed scene is integrated.';});</script></body></html>
+<body>
+<header>Beyond <span>View</span></header>
+<main>
+<section class="panel" aria-labelledby="main-title">
+<div class="eyebrow">Watch the video or enter its world</div>
+<h1 id="main-title">Don't just watch the world.<br>Enter it.</h1>
+<p>Choose a video from your device to test the first step of Beyond View. Your selected video is previewed in this browser; it is not uploaded to a server.</p>
+<div class="actions">
+<label class="file-label" for="video">Choose a video</label>
+<input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
+<button id="enter" class="secondary" type="button">ENTER 3D</button>
+<button id="clear" class="secondary" type="button" hidden>Remove video</button>
+</div>
+<p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
+<div id="file-info" class="file-info" aria-live="polite"></div>
+<video id="player" controls playsinline preload="metadata"></video>
+<div id="note" class="status" role="status" aria-live="polite">3D reconstruction is not connected yet. ENTER 3D will not open a reconstructed world at this stage.</div>
+<details>
+<summary>Tips for recording a future 3D scene</summary>
+<ul class="guide">
+<li>Move slowly and keep the camera steady.</li>
+<li>Capture overlapping views from several angles.</li>
+<li>Include clear details and textured surfaces.</li>
+<li>Avoid fast turns, heavy blur, and large jumps in viewpoint.</li>
+</ul>
+<p class="small">These tips can help reconstruction, but they do not guarantee that a video can produce a complete walkable 3D scene.</p>
+</details>
+</section>
+<footer>Early prototype · Video preview only · No account or 3D reconstruction yet</footer>
+</main>
+<script>
+const input = document.getElementById('video');
+const player = document.getElementById('player');
+const note = document.getElementById('note');
+const fileInfo = document.getElementById('file-info');
+const enter = document.getElementById('enter');
+const clear = document.getElementById('clear');
+let objectUrl = null;
+
+function releaseVideo() {
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  objectUrl = null;
+  player.removeAttribute('src');
+  player.load();
+  player.style.display = 'none';
+  fileInfo.style.display = 'none';
+  fileInfo.textContent = '';
+  clear.hidden = true;
+  input.value = '';
+}
+
+input.addEventListener('change', () => {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('video/')) {
+    releaseVideo();
+    note.className = 'status';
+    note.textContent = 'Please choose a video file, such as MP4 or MOV.';
+    return;
+  }
+  releaseVideo();
+  objectUrl = URL.createObjectURL(file);
+  player.src = objectUrl;
+  player.style.display = 'block';
+  fileInfo.style.display = 'block';
+  fileInfo.textContent = 'Selected: ' + file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(1) + ' MB · Stored only in this browser session';
+  clear.hidden = false;
+  note.className = 'status good';
+  note.textContent = 'Video selected. Press Play to preview it. No upload or 3D conversion has occurred.';
+});
+
+clear.addEventListener('click', () => {
+  releaseVideo();
+  note.className = 'status';
+  note.textContent = 'Video removed. Choose another video to preview it locally.';
+});
+
+enter.addEventListener('click', () => {
+  note.className = 'status';
+  note.textContent = 'The 3D viewer is not connected yet. The next technical milestone is to load a real sample 3D scene in the browser.';
+});
+
+window.addEventListener('beforeunload', () => {
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+});
+</script>
+</body>
+</html>
