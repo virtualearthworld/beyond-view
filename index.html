@@ -48,6 +48,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","@sparkjsdev/spark":"https://sparkjs.dev/releases/spark/2.4.0/spark.module.js"}}
 </script>
+<script src="./config.js"></script>
 </head>
 <body>
 <header>Beyond <span>View</span></header>
@@ -154,7 +155,7 @@ uploadButton.addEventListener("click",async()=>{
     note.textContent="Choose a video first.";
     return;
   }
-  const apiBase=(window.BEYOND_VIEW_UPLOAD_API||"").trim().replace(/\\/$/,"");
+  const apiBase=(window.BEYOND_VIEW_UPLOAD_API||"").trim().replace(/\/$/,"");
   if(!apiBase){
     note.className="status";
     note.textContent="Server upload is not connected yet. The upload backend code is in the GitHub project, but it must be deployed and its API address added to config.js before this button can send files.";
