@@ -20,6 +20,25 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Verify Beyond View 3D workspace files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path(".")
+          home = (root / "index.html").read_text()
+          workspace = root / "immersive-engine" / "index.html"
+          assert 'src="./immersive-engine/index.html"' in home, "Beyond View iframe does not point to its local workspace"
+          assert workspace.is_file() and workspace.stat().st_size > 0, "3D workspace index is missing"
+          html = workspace.read_text()
+          assets = re.findall(r'(?:src|href)="(/beyond-view/immersive-engine/[^"]+)"', html)
+          required = [root / path.removeprefix("/beyond-view/") for path in assets]
+          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
+          if missing:
+              raise SystemExit("3D workspace references missing files: " + ", ".join(missing))
+          print(f"Verified 3D workspace index and {len(required)} referenced local assets.")
+          PY
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
