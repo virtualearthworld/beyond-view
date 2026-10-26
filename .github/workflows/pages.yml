@@ -29,7 +29,9 @@ jobs:
           root = Path(".")
           home = (root / "index.html").read_text()
           workspace = root / "immersive-engine" / "index.html"
-          assert 'src="./immersive-engine/index.html"' in home, "Beyond View iframe does not point to its local workspace"
+          assert 'src="./immersive-engine/sample-3d.html"' in home, "Beyond View iframe does not point to its in-page sample player"
+          sample = root / "immersive-engine" / "sample-3d.html"
+          assert sample.is_file() and sample.stat().st_size > 0, "In-page sample 3D player is missing"
           assert workspace.is_file() and workspace.stat().st_size > 0, "3D workspace index is missing"
           html = workspace.read_text()
           assets = re.findall(r'(?:src|href)="(/beyond-view/immersive-engine/[^"]+)"', html)
