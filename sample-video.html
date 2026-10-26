@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beyond View — Sample 360° Video</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#eef3ff}
+header{padding:20px 24px;background:#111a2b;border-bottom:1px solid #29364d;font-weight:800;font-size:1.2rem}
+main{max-width:1000px;margin:28px auto;padding:0 18px}
+.panel{background:#111827;border:1px solid #29364d;border-radius:16px;padding:20px}
+h1{font-size:clamp(1.4rem,3vw,2rem);margin:0 0 8px}
+p{color:#bdc8dc;line-height:1.55}
+video{display:block;width:100%;max-height:70vh;background:#000;border-radius:12px;margin:18px 0}
+a{color:#9cc8ff}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.actions a{display:inline-block;padding:10px 14px;border:1px solid #435575;border-radius:9px;text-decoration:none}
+.small{font-size:.88rem}
+</style>
+</head>
+<body>
+<header>Beyond View</header>
+<main>
+<section class="panel">
+<h1>Sample 360° video</h1>
+<p>This is an actual moving video sample—not a still image and not the Gausify Orbit workspace. Use the video controls to play, pause, and scrub through the 14-second clip.</p>
+<video controls playsinline preload="metadata" poster="">
+  <source src="https://commons.wikimedia.org/wiki/Special:FilePath/Esino_Lario_360.webm" type="video/webm">
+  Your browser cannot play this WebM sample. Open the original video from Wikimedia Commons below.
+</video>
+<p class="small">Sample footage: “Esino Lario 360” by Jan Ainali, licensed under Creative Commons Attribution-ShareAlike 4.0. <a href="https://commons.wikimedia.org/wiki/File:Esino_Lario_360.webm" target="_blank" rel="noopener">Source and licence</a>.</p>
+<div class="actions">
+<a href="./index.html">Back to Beyond View</a>
+<a href="https://commons.wikimedia.org/wiki/File:Esino_Lario_360.webm" target="_blank" rel="noopener">Open sample source</a>
+</div>
+</section>
+</main>
+</body>
+</html>
