@@ -62,7 +62,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
 <button id="prepare-frames" type="button" class="secondary" disabled>Prepare frames for 3D</button>
-<button id="open-engine" type="button" class="secondary">Open in-page 3D player</button>
+<button id="open-engine" type="button" class="secondary">Launch sample 3D player</button>
 <a href="./immersive-engine/sample-3d.html" class="file-label" style="background:transparent;color:var(--text);border:1px solid #566176">Open sample 3D viewer</a>
 <button id="enter" type="button">ENTER 360° PANORAMA</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
@@ -163,8 +163,7 @@ input.addEventListener("change",()=>{
 
 
 document.getElementById("open-engine").addEventListener("click",()=>{
-  enginePanel.hidden=false;
-  enginePanel.scrollIntoView({behavior:"smooth",block:"start"});
+  window.location.href="./immersive-engine/sample-3d.html";
 });
 prepareFrames.addEventListener("click",async()=>{
   if(!selectedFile){frameStatus.textContent="Choose a video first.";return;}
@@ -244,7 +243,7 @@ async function startViewer(){
   }
   if(viewerLoading) return;
   viewerLoading=true;
-  sceneStatus.textContent="Loading a real photographic 360° landscape…";
+  sceneStatus.textContent="Loading the 360° video panorama…";
   try{
     scene=new THREE.Scene();
     camera=new THREE.PerspectiveCamera(78,1,0.1,100);
@@ -262,13 +261,24 @@ async function startViewer(){
     controls.rotateSpeed=0.45;
     controls.target.set(0,0,-1);
     controls.update();
-    // A real equirectangular panorama lets the viewer look around a photographic environment.
-    const panoramaUrl="https://dl.polyhaven.org/file/ph-assets/HDRIs/jpg/2k/autumn_field_2k.jpg";
-    const texture=await new THREE.TextureLoader().loadAsync(panoramaUrl);
+    // Use a real equirectangular 360° video instead of the old still photograph.
+    const panoramaVideo=document.createElement("video");
+    panoramaVideo.src="https://upload.wikimedia.org/wikipedia/commons/5/5d/Earth_360_Video_The_Call_of_Science.webm";
+    panoramaVideo.crossOrigin="anonymous";
+    panoramaVideo.loop=true;
+    panoramaVideo.muted=true;
+    panoramaVideo.playsInline=true;
+    panoramaVideo.preload="auto";
+    await new Promise((resolve,reject)=>{
+      panoramaVideo.addEventListener("canplay",resolve,{once:true});
+      panoramaVideo.addEventListener("error",()=>reject(new Error("The sample 360° video could not be loaded.")),{once:true});
+      panoramaVideo.load();
+    });
+    await panoramaVideo.play();
+    const texture=new THREE.VideoTexture(panoramaVideo);
     texture.mapping=THREE.EquirectangularReflectionMapping;
     texture.colorSpace=THREE.SRGBColorSpace;
     scene.background=texture;
-    scene.backgroundBlurriness=0;
     document.getElementById("scene-fallback").hidden=true;
     // For a panorama, zoom must change camera field of view rather than move the camera.
     let lastPinchDistance=0;
@@ -299,10 +309,10 @@ async function startViewer(){
     viewerReady=true;
     renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
     resizeViewer();
-    sceneStatus.textContent="Real photo panorama loaded. Drag to look around; scroll the mouse wheel or pinch with two fingers to zoom. This is a photographic 360° view, not yet a walkable 3D reconstruction.";
+    sceneStatus.textContent="360° video is playing. Drag to look around; scroll the mouse wheel or pinch with two fingers to zoom. This is a moving panorama, not yet a walkable 3D reconstruction.";
   }catch(error){
     console.error("Beyond View panorama failed:",error);
-    sceneStatus.textContent="The photo panorama could not load. Check your internet connection and refresh the page.";
+    sceneStatus.textContent="The 360° video could not load. Check your internet connection and try again.";
     if(renderer) renderer.setAnimationLoop(null);
   }finally{
     viewerLoading=false;
