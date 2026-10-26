@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Beyond View — Walkable 3D World</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101722;color:#fff;font:15px/1.4 system-ui,sans-serif}
+#world{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;pointer-events:none}
+.card{background:#101722df;border:1px solid #ffffff25;border-radius:12px;padding:10px 13px;max-width:min(440px,75vw);backdrop-filter:blur(8px)}.title{font-weight:800}.muted{color:#c3cfdd;font-size:12px;margin-top:3px}
+button,a{pointer-events:auto;color:#102326;background:#8be9df;border:0;border-radius:9px;padding:10px 13px;font:inherit;font-weight:750;text-decoration:none;cursor:pointer}
+#start{position:fixed;inset:0;display:grid;place-items:center;background:#07101bd9;padding:22px}#start .card{max-width:560px;padding:24px}h1{font-size:clamp(26px,5vw,42px);line-height:1.05;margin:8px 0 12px}p{color:#d1d9e4}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+#message{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#101722df;border-radius:10px;padding:9px 13px;color:#e1e8f2;text-align:center;max-width:calc(100vw - 24px);font-size:13px}
+#touch{display:none;position:fixed;bottom:26px;left:18px;gap:7px;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px)}#touch button{padding:0;font-size:18px;opacity:.8;touch-action:none}
+@media(pointer:coarse){#touch{display:grid}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="world"></div>
+<div id="hud"><div class="card"><div class="title">Beyond View · Walkable 3D prototype</div><div class="muted">A simple game-like test world — not reconstructed from your video yet.</div></div><a href="./index.html">Back to Beyond View</a></div>
+<div id="start"><div class="card"><div class="muted">MILESTONE 1 · FREE-ROAM CONTROLS</div><h1>Enter the 3D world</h1><p>This test uses actual 3D geometry, so moving closer to a tree makes you approach the tree in the world instead of enlarging a flat picture.</p><p><b>Computer:</b> click Enter, then use W A S D to walk and move the mouse to look around. Press Esc to release the mouse.</p><p><b>Touchscreen:</b> use the arrow pad and drag on the scene to look around.</p><p>This proves the navigation/player layer only. Turning a real video into a detailed, freely walkable copy of its location is a separate reconstruction step and is not implemented by this demo.</p><div class="row"><button id="enter">Enter 3D world</button><a href="./index.html">Back</a></div></div></div>
+<div id="touch"><button data-move="forward" style="grid-column:2;grid-row:1">▲</button><button data-move="left" style="grid-column:1;grid-row:2">◀</button><button data-move="back" style="grid-column:2;grid-row:2">▼</button><button data-move="right" style="grid-column:3;grid-row:2">▶</button></div>
+<div id="message">Click “Enter 3D world” to start.</div>
+<script type="module">
+import * as THREE from "three";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+const host=document.querySelector("#world"), start=document.querySelector("#start"), message=document.querySelector("#message");
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ac8e8);scene.fog=new THREE.Fog(0x9ac8e8,45,155);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,300);camera.position.set(0,1.7,12);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;host.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xe4f4ff,0x66734a,2));
+const sun=new THREE.DirectionalLight(0xfff0d2,2.4);sun.position.set(-25,35,20);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(260,260),new THREE.MeshStandardMaterial({color:0x567d42,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const path=new THREE.Mesh(new THREE.PlaneGeometry(5,120),new THREE.MeshStandardMaterial({color:0xb7a27c,roughness:1}));path.rotation.x=-Math.PI/2;path.position.set(0,.015,-36);scene.add(path);
+function mat(color,roughness=1){return new THREE.MeshStandardMaterial({color,roughness})}
+const trunkMat=mat(0x70503a), leafMats=[mat(0x286b3b),mat(0x397e42),mat(0x4c8b48)], wallMats=[mat(0xd7c7a7),mat(0xb9c5cc),mat(0xd4b58a)];
+function tree(x,z,s=1){const g=new THREE.Group();const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.28*s,2.1*s,7),trunkMat);trunk.position.y=1.05*s;trunk.castShadow=true;g.add(trunk);for(let i=0;i<3;i++){const crown=new THREE.Mesh(new THREE.ConeGeometry((1.15-i*.16)*s,1.8*s,8),leafMats[(Math.random()*leafMats.length)|0]);crown.position.y=(2.1+i*.62)*s;crown.castShadow=true;g.add(crown)}g.position.set(x,0,z);scene.add(g)}
+for(let z=-75;z<45;z+=5+Math.random()*4){tree(-5-Math.random()*12,z,.75+Math.random()*.65);tree(5+Math.random()*14,z-2,.8+Math.random()*.8)}
+function house(x,z,w=5,d=4,h=2.8){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wallMats[(Math.random()*wallMats.length)|0]);body.position.y=h/2;body.castShadow=true;body.receiveShadow=true;g.add(body);const roof=new THREE.Mesh(new THREE.ConeGeometry(w*.78,1.7,4),mat(0x754d3a));roof.position.y=h+0.75;roof.rotation.y=Math.PI/4;roof.scale.z=d/w;roof.castShadow=true;g.add(roof);const door=new THREE.Mesh(new THREE.BoxGeometry(.85,1.65,.08),mat(0x59402f));door.position.set(0,.82,d/2+.045);g.add(door);g.position.set(x,0,z);scene.add(g)}
+house(-10,-14,5,4);house(10,-22,5,4);house(-12,-34,6,5);house(12,-44,6,5);
+for(let i=0;i<18;i++){const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.25+Math.random()*.65,0),mat(0x777d78));rock.position.set((Math.random()-.5)*48,.25,(Math.random()-.5)*95-15);rock.scale.y=.6;rock.castShadow=true;scene.add(rock)}
+// A few visible distant landmarks make movement and depth easy to judge.
+const hillMat=mat(0x66845d);for(let i=0;i<8;i++){const hill=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),hillMat);hill.scale.set(8+Math.random()*9,3+Math.random()*5,7+Math.random()*7);hill.position.set((i%2?1:-1)*(28+Math.random()*22),hill.scale.y-1,-35-i*10);scene.add(hill)}
+const controls=new PointerLockControls(camera,renderer.domElement);const keys={};let active=false;const velocity=new THREE.Vector3(), direction=new THREE.Vector3();
+function setMessage(s){message.textContent=s}
+document.querySelector("#enter").addEventListener("click",()=>{start.style.display="none";active=true;if(matchMedia("(pointer:fine)").matches){controls.lock();setMessage("W A S D to walk · Mouse to look · Esc releases mouse");}else setMessage("Use the arrow pad to walk and drag the scene to look around.");});
+controls.addEventListener("unlock",()=>{if(active)setMessage("Mouse released. Click the scene to resume looking; W A S D moves.");});
+addEventListener("keydown",e=>{keys[e.code]=true;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code))e.preventDefault()});
+addEventListener("keyup",e=>keys[e.code]=false);
+renderer.domElement.addEventListener("click",()=>{if(active&&matchMedia("(pointer:fine)").matches&&!controls.isLocked)controls.lock()});
+let touchLook=null;
+renderer.domElement.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse"&&active)touchLook={x:e.clientX,y:e.clientY}});
+renderer.domElement.addEventListener("pointermove",e=>{if(!touchLook||e.pointerType==="mouse")return;const dx=e.clientX-touchLook.x,dy=e.clientY-touchLook.y;camera.rotation.order="YXZ";camera.rotation.y-=dx*.004;camera.rotation.x-=dy*.004;camera.rotation.x=THREE.MathUtils.clamp(camera.rotation.x,-1.35,1.35);touchLook={x:e.clientX,y:e.clientY}});
+addEventListener("pointerup",()=>touchLook=null);
+const moveButtons=document.querySelectorAll("[data-move]");moveButtons.forEach(b=>{const k={forward:"KeyW",back:"KeyS",left:"KeyA",right:"KeyD"}[b.dataset.move];b.addEventListener("pointerdown",e=>{e.preventDefault();keys[k]=true});for(const ev of ["pointerup","pointercancel","lostpointercapture"])b.addEventListener(ev,()=>keys[k]=false)});
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);if(active){direction.set(Number(!!keys.KeyD)-Number(!!keys.KeyA),0,Number(!!keys.KeyS)-Number(!!keys.KeyW));if(direction.lengthSq()>0){direction.normalize();const speed=(keys.ShiftLeft?9:5)*dt;if(controls.isLocked){controls.moveRight(direction.x*speed);controls.moveForward(-direction.z*speed)}else{const angle=camera.rotation.y;camera.position.x+=(direction.x*Math.cos(angle)-direction.z*Math.sin(angle))*speed;camera.position.z+=(-direction.x*Math.sin(angle)-direction.z*Math.cos(angle))*speed}}camera.position.y=1.7;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-34,34);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-88,28)}renderer.render(scene,camera)}
+animate();addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
