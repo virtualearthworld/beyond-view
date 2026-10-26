@@ -1,0 +1,113 @@
+name: Build Beyond View reconstruction engine
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "immersive-engine/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beyond-view-engine-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out Beyond View
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check out open-source reconstruction engine
+        uses: actions/checkout@v4
+        with:
+          repository: obraia/gausify-orbit
+          ref: main
+          path: gausify-orbit
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: gausify-orbit/pnpm-lock.yaml
+      - name: Install WebAssembly build tool
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.15.0
+      - name: Install engine dependencies
+        working-directory: gausify-orbit
+        run: pnpm install --frozen-lockfile
+      - name: Patch package saving for browser compatibility
+        working-directory: gausify-orbit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("web/src/host/zip.ts")
+          s = p.read_text()
+          start = s.index("    const method = deflate ? 8 : 0;")
+          end = s.index("    if (read > MAX32 || csize > MAX32)", start)
+          replacement = """    // ZIP STORE avoids browser-specific CompressionStream deflate-raw failures.
+          const method = 0;
+          const offset = this.offset;
+          if (offset > MAX32) throw new Error("the package exceeds 4 GB, the web version's limit");
+          await this.out(
+            header(30 + nameBytes.length, (v) => {
+              v.setUint32(0, LOCAL, true);
+              v.setUint16(4, 20, true);
+              v.setUint16(6, FLAGS, true);
+              v.setUint16(8, method, true);
+              v.setUint16(12, DOS_DATE, true);
+              v.setUint16(26, nameBytes.length, true);
+              new Uint8Array(v.buffer).set(nameBytes, 30);
+            }),
+          );
+          const bytes = new Uint8Array(await data.arrayBuffer());
+          const crc = crc32(bytes);
+          const read = bytes.length;
+          const csize = bytes.length;
+          onBytes?.(read);
+          await this.out(bytes);
+          """
+          p.write_text(s[:start] + replacement + s[end:])
+          print("Patched ZIP writer.")
+          PY
+      - name: Build browser engine
+        working-directory: gausify-orbit
+        run: |
+          pnpm web:wasm
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("web/vite.config.ts")
+          s = p.read_text()
+          needle = "export default defineConfig({"
+          assert needle in s, "Vite config format changed"
+          s = s.replace(needle, needle + '\n  base: "/beyond-view/immersive-engine/",', 1)
+          p.write_text(s)
+          PY
+          pnpm web:build
+      - name: Install engine in Beyond View
+        run: |
+          rm -rf immersive-engine
+          mkdir -p immersive-engine
+          cp -R gausify-orbit/dist-web/. immersive-engine/
+          test -s immersive-engine/index.html
+      - name: Commit built engine
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add immersive-engine
+          if git diff --cached --quiet; then
+            echo "Engine build unchanged."
+          else
+            git commit -m "Build self-hosted Beyond View reconstruction engine"
+            git push
+          fi
