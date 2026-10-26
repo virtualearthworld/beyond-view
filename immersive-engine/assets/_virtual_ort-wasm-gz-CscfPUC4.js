@@ -1,0 +1,1 @@
+var e=`/beyond-view/immersive-engine/assets/ort-wasm-simd-threaded.asyncify.wasm-BvgFI620.gz`;export{e as default};
