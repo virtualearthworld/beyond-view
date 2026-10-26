@@ -62,9 +62,9 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
 <button id="prepare-frames" type="button" class="secondary" disabled>Prepare frames for 3D</button>
-<button id="open-engine" type="button" class="secondary">Open 3D workspace</button>
+<button id="open-engine" type="button" class="secondary">Open in-page 3D player</button>
 <a href="./immersive-engine/sample-3d.html" class="file-label" style="background:transparent;color:var(--text);border:1px solid #566176">Open sample 3D viewer</a>
-<button id="enter" type="button">ENTER 3D</button>
+<button id="enter" type="button">ENTER 360° PANORAMA</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
 <p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
@@ -77,7 +77,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 </div>
 <div id="engine-panel" hidden style="margin-top:18px">
 <strong>3D reconstruction workspace</strong><p class="small">This embeds the browser-based Gausify Orbit workspace used by Virtual Earth. It runs separately from this page and has not yet been fully integrated into Beyond View's video feed.</p>
-<iframe id="engine-frame" title="Beyond View 3D reconstruction workspace" loading="lazy" allow="fullscreen; webgpu; xr-spatial-tracking; pointer-lock" style="width:100%;height:min(85vh,900px);min-height:620px;border:1px solid #30384a;border-radius:14px;background:#071321" src="./immersive-engine/index.html"></iframe>
+<iframe id="engine-frame" title="Beyond View 3D reconstruction workspace" loading="lazy" allow="fullscreen; webgpu; xr-spatial-tracking; pointer-lock" style="width:100%;height:min(85vh,900px);min-height:620px;border:1px solid #30384a;border-radius:14px;background:#071321" src="./immersive-engine/sample-3d.html"></iframe>
 </div>
 <details>
 <summary>Tips for recording a future 3D scene</summary>
