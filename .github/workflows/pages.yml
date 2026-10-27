@@ -20,26 +20,45 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Verify Beyond View 3D workspace files
+      - name: Verify Beyond View pages and local navigation
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-
+          from html.parser import HTMLParser
+          from urllib.parse import urlparse
+          
           root = Path(".")
-          home = (root / "index.html").read_text()
-          workspace = root / "immersive-engine" / "index.html"
-          assert 'src="./immersive-engine/sample-3d.html"' in home, "Beyond View iframe does not point to its in-page sample player"
-          sample = root / "immersive-engine" / "sample-3d.html"
-          assert sample.is_file() and sample.stat().st_size > 0, "In-page sample 3D player is missing"
-          assert workspace.is_file() and workspace.stat().st_size > 0, "3D workspace index is missing"
-          html = workspace.read_text()
-          assets = re.findall(r'(?:src|href)="(/beyond-view/immersive-engine/[^"]+)"', html)
-          required = [root / path.removeprefix("/beyond-view/") for path in assets]
-          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
+          required = [
+              "index.html",
+              "real-3d-test.html",
+              "walkable-world.html",
+              "photo-to-3d.html",
+              "sample-video.html",
+          ]
+          missing = [name for name in required if not (root / name).is_file()]
           if missing:
-              raise SystemExit("3D workspace references missing files: " + ", ".join(missing))
-          print(f"Verified 3D workspace index and {len(required)} referenced local assets.")
+              raise SystemExit("Required app pages are missing: " + ", ".join(missing))
+          
+          class LocalLinks(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.links = []
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  for key in ("href", "src"):
+                      value = attrs.get(key, "")
+                      if value.startswith("./") and value.lower().endswith((".html", ".js", ".css")):
+                          self.links.append(value[2:].split("#")[0].split("?")[0])
+          
+          checked = 0
+          for page in root.glob("*.html"):
+              parser = LocalLinks()
+              parser.feed(page.read_text())
+              for link in parser.links:
+                  if link and not (root / link).is_file():
+                      raise SystemExit(f"{page}: local link points to missing file: {link}")
+                  checked += 1
+          print(f"Verified {len(required)} required pages and {checked} local HTML/JS/CSS links.")
           PY
       - name: Configure Pages
         uses: actions/configure-pages@v5
