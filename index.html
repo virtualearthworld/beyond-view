@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#10131c">
-<title>Beyond View — Watch or Enter</title>
+<title>Beyond View — Video to 3D</title>
 <style>
 :root{color-scheme:dark;--bg:#10131c;--panel:#191e2a;--line:#30384a;--text:#f6f8fc;--muted:#aab3c5;--accent:#8be9df}
 *{box-sizing:border-box}
@@ -56,26 +56,25 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <main>
 <section class="panel" aria-labelledby="main-title">
 <div class="eyebrow">Beyond View · Main workspace</div>
-<h1 id="main-title">Don't just watch the world.<br>Enter it.</h1>
-<p>Choose a video, preview it, and prepare image frames for the 3D workflow. This is the main Beyond View workspace; experimental pages are no longer listed here.</p>
+<h1 id="main-title">Turn a video into a 3D scene.</h1>
+<p>Our focus is video-to-3D reconstruction. Open the reconstruction engine to process a suitable orbit video into an explorable 3D scene. You can preview a video here, but selecting it here does not send it into the engine automatically.</p>
 <div class="actions">
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
 <button id="prepare-frames" type="button" class="secondary" disabled>Prepare frames for 3D</button>
-<button id="open-engine" type="button" class="secondary">Open 3D workspace</button>
+<button id="open-engine" type="button">Open video-to-3D engine</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
 <p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
 <div id="file-info" class="file-info" aria-live="polite"></div>
 <video id="player" controls playsinline preload="metadata"></video>
-<div id="note" class="status" role="status" aria-live="polite">Choose a video to preview it. Frame preparation runs locally. The reconstruction workspace uses your device and may require a compatible browser and graphics hardware.</div>
+<div id="note" class="status" role="status" aria-live="polite">Milestone: video-to-3D reconstruction. Open the engine below to select a video for processing. A successful result is a 3D scene, but not necessarily a complete collision-aware world you can walk anywhere in.</div>
 <div id="frame-panel" class="status" style="margin-top:12px">
-<strong>Prepare a video for reconstruction</strong><p class="small" style="margin:6px 0 10px;color:inherit">Extract one image every <select id="frame-interval" aria-label="Frame extraction interval" style="background:#10131c;color:#fff;border:1px solid #566176;border-radius:8px;padding:5px"><option value="1">1 second</option><option value="2" selected>2 seconds</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select>. A ZIP of JPG frames will be saved to your device.</p>
+<strong>Optional: prepare frames</strong><p class="small" style="margin:6px 0 10px;color:inherit">Frame extraction is only a fallback input-preparation step. To attempt reconstruction, use the engine. Extract one image every <select id="frame-interval" aria-label="Frame extraction interval" style="background:#10131c;color:#fff;border:1px solid #566176;border-radius:8px;padding:5px"><option value="1">1 second</option><option value="2" selected>2 seconds</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select>. A ZIP of JPG frames will be saved to your device.</p>
 <div id="frame-status" class="small" aria-live="polite">Choose a video first.</div>
 </div>
 <div id="engine-panel" hidden style="margin-top:18px">
-<strong>In-page 3D sample player</strong><p class="small">This opens a genuine sample 3D model inside Beyond View so you can test rotating and zooming a scene. It does not yet convert your uploaded video into 3D. Gausify Orbit remains a separate experimental reconstruction workspace.</p>
-<iframe id="engine-frame" title="Beyond View 3D reconstruction workspace" loading="lazy" allow="fullscreen; webgpu; xr-spatial-tracking; pointer-lock" style="width:100%;height:min(85vh,900px);min-height:620px;border:1px solid #30384a;border-radius:14px;background:#071321" src="./real-3d-test.html"></iframe>
+<strong>Video-to-3D reconstruction engine</strong><p class="small">The engine processes suitable orbit videos into a Gaussian-splat 3D scene. It may require WebGPU and a modern browser. A Gaussian-splat scene is immersive, but does not guarantee unrestricted walking or collision-aware movement.</p><a class="file-label" href="./immersive-engine/index.html">Launch reconstruction engine</a>
 </div>
 <details>
 <summary>Tips for recording a future 3D scene</summary>
@@ -161,7 +160,7 @@ input.addEventListener("change",()=>{
 
 
 document.getElementById("open-engine").addEventListener("click",()=>{
-  window.location.href="./real-3d-test.html";
+  window.location.href="./immersive-engine/index.html";
 });
 prepareFrames.addEventListener("click",async()=>{
   if(!selectedFile){frameStatus.textContent="Choose a video first.";return;}
