@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Gausify Orbit",
-  "short_name": "Gausify Orbit",
-  "description": "Turns orbit videos into Gaussian Splats, right in the browser with WebGPU.",
+  "name": "Beyond View — Video-to-3D Studio",
+  "short_name": "Beyond View",
+  "description": "Beyond View's in-app video reconstruction workspace.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
