@@ -1,10 +1,6 @@
 name: Build Beyond View reconstruction engine
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "immersive-engine/**"
   workflow_dispatch:
 
 permissions:
