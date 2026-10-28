@@ -61,6 +61,12 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Matches</th><th>2D motion support</th><th>Perspective support</th><th>Median fit error</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="6">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
+<h2>First sparse 3D point-cloud preview</h2>
+<p>This diagnostic view renders accepted points from the first frame pair that has enough valid 3D points. It is an exploratory projection of a pair-local cloud, not a fused or textured environment; orientation and scale are provisional.</p>
+<canvas id="cloud-stage" width="640" height="360" aria-label="Sparse 3D point cloud preview" style="width:100%;display:block;background:#080a10;border-radius:12px"></canvas>
+<small id="cloud-caption">Analyze a video to try the sparse point preview.</small>
+</section>
+<section class="panel">
 <h2>What this milestone proves—and what it does not</h2>
 <ul>
 <li><b>Implemented here:</b> local frame sampling, corner detection, patch matching, multi-frame feature trajectory linking, and robust 2D motion diagnostics.</li>
@@ -75,6 +81,7 @@ import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, es
 import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 import { estimateCameraTrajectory } from "./reconstruction/camera-trajectory.js";
 import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconstruction.js";
+import { projectSparseCloud } from "./reconstruction/sparse-cloud-view.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -82,6 +89,8 @@ const focalInput=document.querySelector("#focal-length");
 const status=document.querySelector("#status");
 const canvas=document.querySelector("#stage");
 const ctx=canvas.getContext("2d");
+const cloudCanvas=document.querySelector("#cloud-stage");
+const cloudCtx=cloudCanvas.getContext("2d");
 let url=null;
 picker.addEventListener("change",()=>{
   if(url) URL.revokeObjectURL(url);
@@ -98,6 +107,21 @@ picker.addEventListener("change",()=>{
   };
   video.onerror=()=>{status.textContent="The browser could not decode this video format.";run.disabled=true;};
 });
+function drawSparseCloud(points){
+  cloudCtx.clearRect(0,0,cloudCanvas.width,cloudCanvas.height);
+  cloudCtx.fillStyle="#aab3c5";cloudCtx.font="14px system-ui";
+  cloudCtx.fillText("Sparse 3D points · pair-local coordinates",16,22);
+  const view=projectSparseCloud(points,{width:cloudCanvas.width,height:cloudCanvas.height,margin:28});
+  if(!view.points.length){cloudCtx.fillText("No pair produced enough accepted 3D points yet.",16,52);
+    document.querySelector("#cloud-caption").textContent="No valid sparse cloud available for this clip.";return;}
+  const depths=view.points.map(p=>p.depth),lo=Math.min(...depths),hi=Math.max(...depths);
+  for(const p of view.points){
+    const q=hi-lo>1e-8?(p.depth-lo)/(hi-lo):0.5;
+    cloudCtx.fillStyle="rgba(139,233,223,"+(0.45+0.5*q)+")";
+    cloudCtx.beginPath();cloudCtx.arc(p.x,p.y,Math.max(1.5,3.2-1.4*q),0,Math.PI*2);cloudCtx.fill();
+  }
+  document.querySelector("#cloud-caption").textContent=view.pointCount+" accepted points from the first qualifying frame pair. Depth shading is relative only; calibration, metric scale, and multi-frame fusion remain unverified.";
+}
 function drawPair(a,b,tracks){
   canvas.width=a.width;canvas.height=a.height;
   const image=ctx.createImageData(a.width,a.height);
@@ -135,6 +159,8 @@ run.addEventListener("click",async()=>{
     const framePairs=pairTracks.map((tracks,i)=>({fromFrame:i,toFrame:i+1,tracks}));
     const trajectory=estimateCameraTrajectory(framePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
     const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
+    const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
+    drawSparseCloud(previewSegment?.points || []);
     let trajectories=[];
     if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks.slice(0,2),{joinTolerancePixels:5,minObservations:3});}
     const summary=summarizeParallax(first,second,tracks);
