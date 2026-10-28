@@ -215,7 +215,16 @@ export function projectPoint(P, point) {
  * Triangulate tracks into sparse 3D points and reject points whose reprojection
  * error is too large. The caller must supply estimated/calibrated camera poses.
  */
-export function triangulateTracks(P1, P2, tracks, { maxReprojectionError = 3 } = {}) {
+export function triangulateTracks(P1, P2, tracks, {
+  maxReprojectionError = 3,
+  requirePositiveDepth = true
+} = {}) {
+  if (!Number.isFinite(maxReprojectionError) || maxReprojectionError < 0 ||
+      typeof requirePositiveDepth !== "boolean") {
+    throw new TypeError("Invalid triangulation quality options.");
+  }
+  const cameraDepth = (P, point) =>
+    P[8] * point[0] + P[9] * point[1] + P[10] * point[2] + P[11];
   const points = [];
   for (const track of tracks) {
     const point = triangulatePoint(
@@ -224,6 +233,11 @@ export function triangulateTracks(P1, P2, tracks, { maxReprojectionError = 3 } =
       [track.to.x, track.to.y]
     );
     if (!point) continue;
+    // Positive camera-space depth is a cheirality check: a mathematically
+    // fitting point behind either camera is not a valid visible scene point.
+    const depth1 = cameraDepth(P1, point);
+    const depth2 = cameraDepth(P2, point);
+    if (requirePositiveDepth && (depth1 <= 1e-10 || depth2 <= 1e-10)) continue;
     const p1 = projectPoint(P1, point);
     const p2 = projectPoint(P2, point);
     if (!p1 || !p2) continue;
@@ -231,7 +245,7 @@ export function triangulateTracks(P1, P2, tracks, { maxReprojectionError = 3 } =
     const error2 = Math.hypot(p2[0] - track.to.x, p2[1] - track.to.y);
     const reprojectionError = (error1 + error2) / 2;
     if (reprojectionError <= maxReprojectionError) {
-      points.push({ position: point, reprojectionError, observations: 2 });
+      points.push({ position: point, reprojectionError, observations: 2, depth1, depth2 });
     }
   }
   return points;
