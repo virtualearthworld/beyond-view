@@ -36,3 +36,4 @@ jobs:
           node --experimental-default-type=module tests/two-view-pipeline.test.mjs
           node --experimental-default-type=module tests/camera-trajectory.test.mjs
           node --experimental-default-type=module tests/reconstruction-lab.test.mjs
+          node --experimental-default-type=module tests/trajectory-reconstruction.test.mjs
