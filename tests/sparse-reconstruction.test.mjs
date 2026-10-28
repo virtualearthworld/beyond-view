@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { detectFeatures, summarizeParallax, trackFeatures, estimateDominantTranslation } from "../reconstruction/sparse-reconstruction.js";
+import { detectFeatures, summarizeParallax, trackFeatures, estimateDominantTranslation, linkTrackSequences } from "../reconstruction/sparse-reconstruction.js";
 
 // Deterministic textured frame: corner detection must find image evidence,
 // not fabricate a feature list for a blank frame.
@@ -86,3 +86,28 @@ assert.equal(motion.outliers.length, 1);
 assert.equal(motion.status, "dominant-translation-found");
 assert.ok(motion.inlierRatio > 0.8);
 console.log("dominant motion robust-outlier test passed");
+
+const pair01 = [
+  {from:{x:10,y:10},to:{x:12,y:11},patchError:2},
+  {from:{x:30,y:20},to:{x:32,y:21},patchError:3},
+  {from:{x:50,y:50},to:{x:90,y:90},patchError:4}
+];
+const pair12 = [
+  {from:{x:12.5,y:11},to:{x:15,y:12},patchError:2},
+  {from:{x:32,y:21.5},to:{x:34,y:22},patchError:3},
+  {from:{x:90,y:90},to:{x:95,y:95},patchError:4}
+];
+const pair23 = [
+  {from:{x:15,y:12},to:{x:18,y:13},patchError:2},
+  {from:{x:34,y:22},to:{x:36,y:23},patchError:3}
+];
+const trajectories = linkTrackSequences([pair01,pair12,pair23], {
+  joinTolerancePixels: 1, minObservations: 4
+});
+assert.equal(trajectories.length, 2, "only trajectories consistently observed across all three frame pairs should remain");
+assert.ok(trajectories.every(t=>t.observations.length===4), "each trajectory should contain one observation per frame");
+assert.deepEqual(trajectories[0].observations[0], {x:10,y:10});
+assert.deepEqual(trajectories[0].observations[3], {x:18,y:13});
+assert.equal(linkTrackSequences([], {}).length, 0, "empty frame sequences should return no trajectories");
+assert.throws(()=>linkTrackSequences([], {joinTolerancePixels:-1}), /Invalid track-sequence options/);
+console.log("multi-frame trajectory linking tests passed");
