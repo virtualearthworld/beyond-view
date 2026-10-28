@@ -57,7 +57,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <section class="panel">
 <h2>Multi-frame consistency check</h2>
 <p>This compares each adjacent sampled pair across the clip. It reports feature matches, robust 2D-motion support, and perspective-model support separately. These are useful stability clues, not a calibrated 3D trajectory; no failed pair is filled in with invented motion.</p>
-<div class="metrics"><div class="metric"><strong id="pair-count">—</strong><span>Adjacent pairs analyzed</span></div><div class="metric"><strong id="pair-strong">—</strong><span>Pairs with strong perspective support</span></div><div class="metric"><strong id="pair-weak">—</strong><span>Pairs needing review</span></div><div class="metric"><strong id="pose-segments">—</strong><span>Pairs with estimated relative pose</span></div><div class="metric"><strong id="trajectory-status">—</strong><span>Provisional trajectory status</span></div></div>
+<div class="metrics"><div class="metric"><strong id="pair-count">—</strong><span>Adjacent pairs analyzed</span></div><div class="metric"><strong id="pair-strong">—</strong><span>Pairs with strong perspective support</span></div><div class="metric"><strong id="pair-weak">—</strong><span>Pairs needing review</span></div><div class="metric"><strong id="pose-segments">—</strong><span>Pairs with estimated relative pose</span></div><div class="metric"><strong id="trajectory-status">—</strong><span>Provisional trajectory status</span></div><div class="metric"><strong id="sparse-points">—</strong><span>Filtered sparse 3D points (pair-local)</span></div><div class="metric"><strong id="sparse-segments">—</strong><span>Pairs with enough valid 3D points</span></div><div class="metric"><strong id="sparse-error">—</strong><span>Median 3D-point reprojection error</span></div></div>
 <div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Matches</th><th>2D motion support</th><th>Perspective support</th><th>Median fit error</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="6">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
@@ -74,6 +74,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences } from "./reconstruction/sparse-reconstruction.js";
 import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 import { estimateCameraTrajectory } from "./reconstruction/camera-trajectory.js";
+import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconstruction.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -131,7 +132,9 @@ run.addEventListener("click",async()=>{
     const tracks=pairTracks[0]||[];
     const analysisFocalLength=focalLength*sampled[0].width/video.videoWidth;
     const K=[[analysisFocalLength,0,sampled[0].width/2],[0,analysisFocalLength,sampled[0].height/2],[0,0,1]];
-    const trajectory=estimateCameraTrajectory(pairTracks.map((pairTracksForFrame,i)=>({fromFrame:i,toFrame:i+1,tracks:pairTracksForFrame})),{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
+    const framePairs=pairTracks.map((tracks,i)=>({fromFrame:i,toFrame:i+1,tracks}));
+    const trajectory=estimateCameraTrajectory(framePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
+    const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
     let trajectories=[];
     if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks.slice(0,2),{joinTolerancePixels:5,minObservations:3});}
     const summary=summarizeParallax(first,second,tracks);
@@ -152,12 +155,15 @@ run.addEventListener("click",async()=>{
     document.querySelector("#pair-weak").textContent=String(pairReports.length-strong);
     document.querySelector("#pose-segments").textContent=trajectory.estimatedSegmentCount+" / "+trajectory.segmentCount;
     document.querySelector("#trajectory-status").textContent=trajectory.status;
+    document.querySelector("#sparse-points").textContent=String(sparse.pointCount);
+    document.querySelector("#sparse-segments").textContent=sparse.validSegmentCount+" / "+sparse.segmentCount;
+    document.querySelector("#sparse-error").textContent=sparse.medianReprojectionError===null?"—":sparse.medianReprojectionError.toFixed(2)+" px";
     document.querySelector("#calibration-note").textContent="Original-video focal length entered: "+focalLength+" px; scaled to "+analysisFocalLength.toFixed(1)+" px for analysis. Calibration remains unverified unless you supplied a calibrated value. Pose results are provisional and scale is unknown. "+trajectory.limitation;
     document.querySelector("#pair-results").innerHTML=pairReports.map(p=>{const ok=p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3;return "<tr><td>"+p.from.toFixed(1)+"–"+p.to.toFixed(1)+" s</td><td>"+p.matches+"</td><td>"+p.motionInliers+" / "+p.matches+" ("+(Number.isFinite(p.motionRatio)?(p.motionRatio*100).toFixed(0):"—")+"%)</td><td>"+p.perspectiveInliers+" / "+p.matches+" ("+(Number.isFinite(p.perspectiveRatio)?(p.perspectiveRatio*100).toFixed(0):"—")+"%)</td><td>"+(p.error===null?"—":p.error.toFixed(2)+" px")+"</td><td class=\"status-chip "+(ok?"good-text":"weak-text")+"\">"+(ok?"Stronger fit":"Review")+"</td></tr>";}).join("");
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates. Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+", scale is unknown, and accumulated drift is possible; this is not yet a validated world trajectory or 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+". Points are not fused into one world; scale is unknown and accumulated drift is possible.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
