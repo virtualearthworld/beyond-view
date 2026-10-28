@@ -54,3 +54,18 @@ const expectedProjected = projectHomography(knownH, [81, 49]);
 assert.ok(Math.hypot(projected[0] - expectedProjected[0], projected[1] - expectedProjected[1]) < 0.5,
   "estimated homography should reproduce a held-out point");
 console.log("perspective homography RANSAC test passed");
+
+const tooFew = estimateHomographyRansac(perspectiveTracks.slice(0, 3));
+assert.equal(tooFew.status, "insufficient-tracks", "fewer than four tracks must not produce a model");
+assert.equal(tooFew.H, null);
+assert.ok(robustH.medianReprojectionErrorPixels < 0.5, "the model should report low median reprojection error");
+assert.ok(robustH.coverage.spanX > 100 && robustH.coverage.spanY > 50,
+  "the model should report the spatial spread of supporting observations");
+const collinear = Array.from({length: 8}, (_, i) => ({
+  from: {x: i * 10, y: i * 5},
+  to: {x: i * 12 + 3, y: i * 6 - 2}
+}));
+const degenerate = estimateHomographyRansac(collinear, {iterations: 40});
+assert.notEqual(degenerate.status, "perspective-model-found",
+  "collinear observations must not be presented as strong perspective evidence");
+console.log("homography quality and degeneracy tests passed");
