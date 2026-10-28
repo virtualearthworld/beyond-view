@@ -127,7 +127,7 @@ run.addEventListener("click",async()=>{
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
     const perspective=estimateHomographyRansac(summary.tracks,{thresholdPixels:3,iterations:120});
-    document.querySelector("#features").textContent=String(features.length);
+    document.querySelector("#features").textContent=String(featureSets[0].length);
     document.querySelector("#matches").textContent=String(summary.matchedFeatures);
     document.querySelector("#parallax").textContent=summary.medianDisplacementPixels.toFixed(2)+" px";
     document.querySelector("#dominant-motion").textContent=motion.dx===null?"Not enough":motion.dx.toFixed(1)+", "+motion.dy.toFixed(1)+" px";
