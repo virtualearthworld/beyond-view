@@ -15,14 +15,21 @@ for(let i=0;i<48;i++){
 const trajectory=estimateCameraTrajectory([
   {fromFrame:0,toFrame:1,tracks},
   {fromFrame:1,toFrame:2,tracks},
-  {fromFrame:2,toFrame:3,tracks:tracks.slice(0,4)}
+  {fromFrame:2,toFrame:3,tracks:tracks.slice(0,4)},
+  {fromFrame:3,toFrame:4,tracks}
 ],{K,iterations:350,thresholdPixels:1.5,minInliers:20,minimumPoints:12});
-assert.equal(trajectory.segmentCount,3);
-assert.equal(trajectory.poses.length,4);
+assert.equal(trajectory.segmentCount,4);
+assert.equal(trajectory.poses.length,5);
 assert.equal(trajectory.scaleKnown,false);
 assert.ok(["trajectory-estimated","partial-trajectory","trajectory-unavailable"].includes(trajectory.status));
 assert.equal(trajectory.segments[2].status,"insufficient-epipolar-support");
 assert.equal(trajectory.poses[3].status,"gap","failed segment must be explicit, not silently interpolated");
+assert.notEqual(trajectory.segments[1].componentId, trajectory.segments[3].componentId,
+  "a successful pose after a gap must start a separate coordinate component");
+assert.equal(trajectory.poses[4].componentId, trajectory.segments[3].componentId,
+  "post-gap pose must be labelled with its new local component");
+assert.equal(trajectory.poses[4].componentOrigin,true,
+  "the first pose after a gap must identify its local coordinate origin");
 assert.equal(trajectory.poses[0].translation[0],0);
 assert.ok(trajectory.estimatedSegmentCount>=1,"synthetic known-pose segments should yield trajectory progress");
 console.log("camera trajectory regression tests passed");
