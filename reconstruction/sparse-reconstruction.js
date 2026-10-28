@@ -308,3 +308,39 @@ export function linkTrackSequences(pairwiseTracks, {
   }
   return trajectories.filter(t=>t.observations.length>=minObservations);
 }
+
+
+/**
+ * Link tracks only inside contiguous, successfully estimated camera-path
+ * components. A null component ID or a change of ID is a hard boundary:
+ * image tracks on opposite sides are never returned as one trajectory.
+ */
+export function linkTrackSequencesByComponent(pairwiseTracks, pairComponentIds, options = {}) {
+  if (!Array.isArray(pairwiseTracks) || !Array.isArray(pairComponentIds) ||
+      pairwiseTracks.length !== pairComponentIds.length ||
+      pairComponentIds.some(id => id !== null && (!Number.isInteger(id) || id < 0))) {
+    throw new TypeError("Provide one non-negative component ID or null for each frame pair.");
+  }
+  const output = [];
+  let start = 0;
+  while (start < pairwiseTracks.length) {
+    const componentId = pairComponentIds[start];
+    if (componentId === null) {
+      start += 1;
+      continue;
+    }
+    let end = start + 1;
+    while (end < pairwiseTracks.length && pairComponentIds[end] === componentId) end += 1;
+    const linked = linkTrackSequences(pairwiseTracks.slice(start, end), options);
+    for (const trajectory of linked) {
+      output.push({
+        ...trajectory,
+        componentId,
+        fromPairIndex: start,
+        toPairIndex: end - 1
+      });
+    }
+    start = end;
+  }
+  return output;
+}
