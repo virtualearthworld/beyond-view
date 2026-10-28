@@ -77,7 +77,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 </section>
 </main>
 <script type="module">
-import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences } from "./reconstruction/sparse-reconstruction.js";
+import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences, linkTrackSequencesByComponent } from "./reconstruction/sparse-reconstruction.js";
 import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 import { estimateCameraTrajectory } from "./reconstruction/camera-trajectory.js";
 import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconstruction.js";
@@ -163,8 +163,12 @@ run.addEventListener("click",async()=>{
     drawSparseCloud(previewSegment?.points || []);
     let trajectories=[];
     if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks,{joinTolerancePixels:5,minObservations:3});}
+    const pairComponentIds=trajectory.segments.map(segment=>
+      segment.status==="estimated" && Number.isInteger(segment.componentId)
+        ? segment.componentId : null
+    );
     const fullClipTrajectories=pairTracks.length>=2
-      ?linkTrackSequences(pairTracks,{joinTolerancePixels:5,minObservations:pairTracks.length+1}):[];
+      ?linkTrackSequencesByComponent(pairTracks,pairComponentIds,{joinTolerancePixels:5,minObservations:pairTracks.length+1}):[];
     const longestTrackFrames=fullClipTrajectories.reduce((max,t)=>Math.max(max,t.observations.length),0);
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
