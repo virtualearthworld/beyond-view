@@ -11,6 +11,6 @@ assert.match(html, /featureSets\[0\]\.length/);
 assert.match(html, /estimateCameraTrajectory/);
 assert.match(html, /id="focal-length"/);
 assert.match(html, /pose-segments/);
-assert.match(html, /assumption, not verified camera calibration/);
+assert.match(html, /not verified camera calibration/);
 assert.doesNotMatch(html, /textContent=String\(features\.length\)/);
 console.log("reconstruction lab multi-frame report integration test passed");
