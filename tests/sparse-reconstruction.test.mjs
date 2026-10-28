@@ -111,3 +111,21 @@ assert.deepEqual(trajectories[0].observations[3], {x:18,y:13});
 assert.equal(linkTrackSequences([], {}).length, 0, "empty frame sequences should return no trajectories");
 assert.throws(()=>linkTrackSequences([], {joinTolerancePixels:-1}), /Invalid track-sequence options/);
 console.log("multi-frame trajectory linking tests passed");
+
+const { linkTrackSequencesByComponent } = await import("../reconstruction/sparse-reconstruction.js");
+const componentAware = linkTrackSequencesByComponent(
+  [pair01, pair12, pair23, pair01, pair12],
+  [0, 0, null, 1, 1],
+  { joinTolerancePixels: 1, minObservations: 3 }
+);
+assert.ok(componentAware.length >= 2, "tracks should be linked independently inside valid components");
+assert.ok(componentAware.every(t => t.componentId === 0 || t.componentId === 1));
+assert.ok(componentAware.every(t => !(t.fromPairIndex <= 2 && t.toPairIndex >= 3)),
+  "a trajectory must never bridge a camera-component boundary");
+assert.ok(componentAware.filter(t => t.componentId === 0).every(t => t.toPairIndex <= 1));
+assert.ok(componentAware.filter(t => t.componentId === 1).every(t => t.fromPairIndex >= 3));
+assert.throws(
+  () => linkTrackSequencesByComponent([pair01], [0, 1]),
+  /one non-negative component ID/
+);
+console.log("component-aware trajectory linking tests passed");
