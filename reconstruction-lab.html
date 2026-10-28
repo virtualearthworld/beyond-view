@@ -45,7 +45,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="metric"><strong id="perspective-support">—</strong><span>Tracks supporting perspective model</span></div>
 <div class="metric"><strong id="perspective-error">—</strong><span>Median perspective fit error</span></div>
 <div class="metric"><strong id="perspective-coverage">—</strong><span>Perspective track spread (x × y)</span></div>
-<div class="metric"><strong id="trajectories">—</strong><span>Features linked across 3 frames</span></div>
+<div class="metric"><strong id="trajectories">—</strong><span>Features linked across 3 frames</span></div><div class="metric"><strong id="persistent-trajectories">—</strong><span>Tracks surviving the full sampled clip</span></div><div class="metric"><strong id="track-coverage">—</strong><span>Frames covered by longest linked track</span></div>
 </div>
 </section>
 <section class="panel">
@@ -162,7 +162,10 @@ run.addEventListener("click",async()=>{
     const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
     drawSparseCloud(previewSegment?.points || []);
     let trajectories=[];
-    if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks.slice(0,2),{joinTolerancePixels:5,minObservations:3});}
+    if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks,{joinTolerancePixels:5,minObservations:3});}
+    const fullClipTrajectories=pairTracks.length>=2
+      ?linkTrackSequences(pairTracks,{joinTolerancePixels:5,minObservations:pairTracks.length+1}):[];
+    const longestTrackFrames=fullClipTrajectories.reduce((max,t)=>Math.max(max,t.observations.length),0);
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
     const perspective=estimateHomographyRansac(summary.tracks,{thresholdPixels:3,iterations:120});
@@ -175,6 +178,8 @@ run.addEventListener("click",async()=>{
     document.querySelector("#perspective-error").textContent=perspective.medianReprojectionErrorPixels===null?"—":perspective.medianReprojectionErrorPixels.toFixed(2)+" px";
     document.querySelector("#perspective-coverage").textContent=Math.round(perspective.coverage.spanX)+" × "+Math.round(perspective.coverage.spanY)+" px";
     document.querySelector("#trajectories").textContent=third?String(trajectories.length):"Need 3 frames";
+    document.querySelector("#persistent-trajectories").textContent=String(fullClipTrajectories.length);
+    document.querySelector("#track-coverage").textContent=longestTrackFrames+" / "+sampled.length;
     const strong=pairReports.filter(p=>p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3).length;
     document.querySelector("#pair-count").textContent=String(pairReports.length);
     document.querySelector("#pair-strong").textContent=String(strong);
