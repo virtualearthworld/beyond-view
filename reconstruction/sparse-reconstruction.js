@@ -187,6 +187,45 @@ export function trackFeatures(a, b, features, {
   return tracks;
 }
 
+
+/**
+ * Estimate a dominant 2D translation with a median model and return inliers.
+ * This is a robust diagnostic for simple motion, not a full camera-pose solve:
+ * perspective, rotation, and independently moving objects can violate it.
+ */
+export function estimateDominantTranslation(tracks, { inlierThreshold = 3 } = {}) {
+  if (!Array.isArray(tracks) || !Number.isFinite(inlierThreshold) || inlierThreshold < 0) {
+    throw new TypeError("Expected tracks and a non-negative inlier threshold.");
+  }
+  const valid = tracks.filter(t =>
+    t && t.from && t.to &&
+    Number.isFinite(t.from.x) && Number.isFinite(t.from.y) &&
+    Number.isFinite(t.to.x) && Number.isFinite(t.to.y)
+  );
+  const median = values => {
+    if (!values.length) return null;
+    const sorted = values.slice().sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
+  };
+  const dxValues = valid.map(t => t.to.x - t.from.x);
+  const dyValues = valid.map(t => t.to.y - t.from.y);
+  const dx = median(dxValues), dy = median(dyValues);
+  if (dx === null || dy === null) {
+    return { dx: null, dy: null, inliers: [], outliers: [], inlierRatio: 0, status: "insufficient-tracks" };
+  }
+  const inliers = [], outliers = [];
+  for (const track of valid) {
+    const error = Math.hypot((track.to.x - track.from.x) - dx, (track.to.y - track.from.y) - dy);
+    (error <= inlierThreshold ? inliers : outliers).push({ ...track, motionModelErrorPixels: error });
+  }
+  return {
+    dx, dy, inliers, outliers,
+    inlierRatio: inliers.length / valid.length,
+    status: inliers.length >= 8 ? "dominant-translation-found" : "weak-motion-support",
+    limitation: "A 2D translation model is only a diagnostic; it is not camera rotation, depth, or 3D geometry."
+  };
+}
+
 /**
  * Produce a transparent diagnostic summary of measured parallax. This is
  * intentionally not named a mesh or scene: without calibrated camera poses
