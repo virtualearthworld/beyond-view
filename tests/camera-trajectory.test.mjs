@@ -30,6 +30,12 @@ assert.equal(trajectory.poses[4].componentId, trajectory.segments[3].componentId
   "post-gap pose must be labelled with its new local component");
 assert.equal(trajectory.poses[4].componentOrigin,true,
   "the first pose after a gap must identify its local coordinate origin");
+assert.equal(trajectory.connectedComponentCount,2,
+  "trajectory summary must separate connected path components");
+assert.deepEqual(trajectory.components.map(c=>c.segmentIndices),[[0,1],[3]],
+  "component summaries must list only connected estimated segments");
+assert.equal(trajectory.longestConnectedSegmentCount,2,
+  "longest connected path length must be reported");
 assert.equal(trajectory.poses[0].translation[0],0);
 assert.ok(trajectory.estimatedSegmentCount>=1,"synthetic known-pose segments should yield trajectory progress");
 console.log("camera trajectory regression tests passed");
