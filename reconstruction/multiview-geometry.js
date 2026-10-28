@@ -13,6 +13,114 @@ function finiteArray(values, length, name) {
   }
 }
 
+
+/** Solve a square linear system with partial pivoting. */
+function solveLinearSystem(matrix, vector) {
+  const n = vector.length;
+  const a = matrix.map((row, i) => [...row, vector[i]]);
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(a[row][col]) > Math.abs(a[pivot][col])) pivot = row;
+    }
+    if (Math.abs(a[pivot][col]) < 1e-10) return null;
+    [a[col], a[pivot]] = [a[pivot], a[col]];
+    const scale = a[col][col];
+    for (let j = col; j <= n; j++) a[col][j] /= scale;
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const factor = a[row][col];
+      for (let j = col; j <= n; j++) a[row][j] -= factor * a[col][j];
+    }
+  }
+  const result = a.map(row => row[n]);
+  return result.every(Number.isFinite) ? result : null;
+}
+
+/**
+ * Fit a 2D projective homography from four or more image correspondences.
+ * This models perspective image-to-image mapping, not a 3D camera pose.
+ */
+export function estimateHomography(tracks) {
+  if (!Array.isArray(tracks) || tracks.length < 4) return null;
+  const rows = [], values = [];
+  for (const t of tracks) {
+    if (!t?.from || !t?.to ||
+        ![t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite)) continue;
+    const {x,y}=t.from, {x:u,y:v}=t.to;
+    rows.push([x,y,1,0,0,0,-u*x,-u*y]); values.push(u);
+    rows.push([0,0,0,x,y,1,-v*x,-v*y]); values.push(v);
+  }
+  if (rows.length < 8) return null;
+  // Least-squares normal equations for h33 fixed to 1.
+  const ata=Array.from({length:8},()=>Array(8).fill(0));
+  const atb=Array(8).fill(0);
+  for(let r=0;r<rows.length;r++) for(let i=0;i<8;i++){
+    atb[i]+=rows[r][i]*values[r];
+    for(let j=0;j<8;j++) ata[i][j]+=rows[r][i]*rows[r][j];
+  }
+  const h=solveLinearSystem(ata,atb);
+  return h ? [...h,1] : null;
+}
+
+export function projectHomography(H, point) {
+  finiteArray(H,9,"H"); finiteArray(point,2,"point");
+  const [x,y]=point;
+  const z=H[6]*x+H[7]*y+H[8];
+  if(!Number.isFinite(z)||Math.abs(z)<1e-10)return null;
+  const out=[(H[0]*x+H[1]*y+H[2])/z,(H[3]*x+H[4]*y+H[5])/z];
+  return out.every(Number.isFinite)?out:null;
+}
+
+/**
+ * Deterministic RANSAC for a dominant perspective mapping between two frames.
+ * Returns inlier/outlier tracks and pixel reprojection errors. This is useful
+ * for camera-motion diagnostics but is not an essential-matrix pose solution.
+ */
+export function estimateHomographyRansac(tracks, { thresholdPixels=3, iterations=160 } = {}) {
+  if(!Array.isArray(tracks)||!Number.isFinite(thresholdPixels)||thresholdPixels<=0||
+     !Number.isInteger(iterations)||iterations<1) throw new TypeError("Invalid homography RANSAC options.");
+  const valid=tracks.filter(t=>t?.from&&t?.to&&[t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite));
+  if(valid.length<4)return {H:null,inliers:[],outliers:valid,inlierRatio:0,status:"insufficient-tracks"};
+  let bestH=null,bestInliers=[],bestError=Infinity;
+  // Seeded pseudo-random sampling keeps tests reproducible.
+  let seed=0x51f15e;
+  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  for(let it=0;it<iterations;it++){
+    const sample=[];
+    while(sample.length<4){const candidate=valid[Math.floor(random()*valid.length)];if(!sample.includes(candidate))sample.push(candidate);}
+    const H=estimateHomography(sample); if(!H)continue;
+    const inliers=[];let error=0;
+    for(const track of valid){
+      const p=projectHomography(H,[track.from.x,track.from.y]);if(!p)continue;
+      const e=Math.hypot(p[0]-track.to.x,p[1]-track.to.y);
+      if(e<=thresholdPixels){inliers.push({...track,homographyErrorPixels:e});error+=e;}
+    }
+    if(inliers.length>bestInliers.length||(inliers.length===bestInliers.length&&error<bestError)){
+      bestH=H;bestInliers=inliers;bestError=error;
+    }
+  }
+  if(bestInliers.length>=4){
+    const refined=estimateHomography(bestInliers);
+    if(refined){
+      const recalculated=[];
+      for(const track of valid){
+        const p=projectHomography(refined,[track.from.x,track.from.y]);if(!p)continue;
+        const e=Math.hypot(p[0]-track.to.x,p[1]-track.to.y);
+        if(e<=thresholdPixels)recalculated.push({...track,homographyErrorPixels:e});
+      }
+      if(recalculated.length>=bestInliers.length) {bestH=refined;bestInliers=recalculated;}
+    }
+  }
+  const inlierSet=new Set(bestInliers);
+  // Compare by object identity is unreliable after error metadata is attached; classify by coordinates instead.
+  const keys=new Set(bestInliers.map(t=>[t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  const outliers=valid.filter(t=>!keys.has([t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  return {H:bestH,inliers:bestInliers,outliers,inlierRatio:bestInliers.length/valid.length,
+    status:bestInliers.length>=8?"perspective-model-found": "weak-model-support",
+    limitation:"A 2D homography can explain planar or rotation-dominated image motion; it does not by itself recover camera pose or scene depth."};
+}
+
 /**
  * Triangulate one point from two calibrated 3x4 projection matrices and two
  * image coordinates using the DLT equations and a 4x4 smallest-eigenvector
