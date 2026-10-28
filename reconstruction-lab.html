@@ -19,6 +19,7 @@ button:disabled{opacity:.45;cursor:wait}input[type=file]{max-width:100%;padding:
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}
 .metric{padding:14px;border:1px solid var(--line);border-radius:12px}.metric strong{display:block;font-size:1.6rem;color:var(--accent)}.metric span{font-size:.85rem;color:var(--muted)}
 small{color:var(--muted)}a{color:var(--accent)}
+.pair-table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:12px}.pair-table th,.pair-table td{padding:9px 7px;text-align:left;border-bottom:1px solid var(--line)}.pair-table th{color:var(--accent)}.pair-table-wrap{overflow-x:auto}.status-chip{font-weight:700}.good-text{color:#a9fff2}.weak-text{color:#ffdc9b}
 </style>
 </head>
 <body>
@@ -50,6 +51,12 @@ small{color:var(--muted)}a{color:var(--accent)}
 <p>The overlay shows measured image correspondences between two frames. Lines are observations from the video—not guessed objects or a 3D scene. The lab now compares a robust 2D translation model with a robust perspective homography, rejecting tracks that disagree with each model. A homography can explain some perspective changes, but it is not a 3D camera-pose solution.</p>
 <canvas id="stage" width="960" height="540" aria-label="Feature tracking visualization"></canvas>
 <small id="caption">After analysis, the first sampled frame and tracked feature movements will appear here.</small>
+</section>
+<section class="panel">
+<h2>Multi-frame consistency check</h2>
+<p>This compares each adjacent sampled pair across the clip. It reports feature matches, robust 2D-motion support, and perspective-model support separately. These are useful stability clues, not a calibrated 3D trajectory; no failed pair is filled in with invented motion.</p>
+<div class="metrics"><div class="metric"><strong id="pair-count">—</strong><span>Adjacent pairs analyzed</span></div><div class="metric"><strong id="pair-strong">—</strong><span>Pairs with strong perspective support</span></div><div class="metric"><strong id="pair-weak">—</strong><span>Pairs needing review</span></div></div>
+<div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Matches</th><th>2D motion support</th><th>Perspective support</th><th>Median fit error</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="6">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
 <h2>What this milestone proves—and what it does not</h2>
@@ -99,18 +106,24 @@ function drawPair(a,b,tracks){
 run.addEventListener("click",async()=>{
   run.disabled=true;status.className="";status.textContent="Sampling frames and tracking visible features…";
   try{
-    const sampled=await sampleVideoFrames(video,{intervalSeconds:1.5,maxFrames:8,width:480});
+    const sampled=await sampleVideoFrames(video,{intervalSeconds:1.5,maxFrames:16,width:480});
     if(sampled.length<2)throw new Error("The video is too short to compare two frames.");
     document.querySelector("#frames").textContent=String(sampled.length);
     const first=sampled[0], second=sampled[1], third=sampled[2] || null;
-    const features=detectFeatures(first,{maxFeatures:180,minDistance:10});
-    const tracks=trackFeatures(first,second,features,{searchRadius:18,maxMeanError:26});
-    let trajectories=[];
-    if(third){
-      const middleFeatures=detectFeatures(second,{maxFeatures:180,minDistance:10});
-      const nextTracks=trackFeatures(second,third,middleFeatures,{searchRadius:18,maxMeanError:26});
-      trajectories=linkTrackSequences([tracks,nextTracks],{joinTolerancePixels:5,minObservations:3});
+    const featureSets=sampled.map(frame=>detectFeatures(frame,{maxFeatures:160,minDistance:10}));
+    const pairReports=[];
+    const pairTracks=[];
+    for(let i=0;i<sampled.length-1;i++){
+      const tracksForPair=trackFeatures(sampled[i],sampled[i+1],featureSets[i],{searchRadius:18,maxMeanError:26});
+      pairTracks.push(tracksForPair);
+      const pairSummary=summarizeParallax(sampled[i],sampled[i+1],tracksForPair);
+      const pairMotion=estimateDominantTranslation(pairSummary.tracks,{inlierThreshold:3});
+      const pairPerspective=estimateHomographyRansac(pairSummary.tracks,{thresholdPixels:3,iterations:120});
+      pairReports.push({from:sampled[i].time,to:sampled[i+1].time,matches:pairSummary.matchedFeatures,motionInliers:pairMotion.inliers.length,motionRatio:pairMotion.inlierRatio,perspectiveInliers:pairPerspective.inliers.length,perspectiveRatio:pairPerspective.inlierRatio,error:pairPerspective.medianReprojectionErrorPixels});
     }
+    const tracks=pairTracks[0]||[];
+    let trajectories=[];
+    if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks.slice(0,2),{joinTolerancePixels:5,minObservations:3});}
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
     const perspective=estimateHomographyRansac(summary.tracks,{thresholdPixels:3,iterations:120});
@@ -123,10 +136,15 @@ run.addEventListener("click",async()=>{
     document.querySelector("#perspective-error").textContent=perspective.medianReprojectionErrorPixels===null?"—":perspective.medianReprojectionErrorPixels.toFixed(2)+" px";
     document.querySelector("#perspective-coverage").textContent=Math.round(perspective.coverage.spanX)+" × "+Math.round(perspective.coverage.spanY)+" px";
     document.querySelector("#trajectories").textContent=third?String(trajectories.length):"Need 3 frames";
+    const strong=pairReports.filter(p=>p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3).length;
+    document.querySelector("#pair-count").textContent=String(pairReports.length);
+    document.querySelector("#pair-strong").textContent=String(strong);
+    document.querySelector("#pair-weak").textContent=String(pairReports.length-strong);
+    document.querySelector("#pair-results").innerHTML=pairReports.map(p=>{const ok=p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3;return "<tr><td>"+p.from.toFixed(1)+"–"+p.to.toFixed(1)+" s</td><td>"+p.matches+"</td><td>"+p.motionInliers+" / "+p.matches+" ("+(Number.isFinite(p.motionRatio)?(p.motionRatio*100).toFixed(0):"—")+"%)</td><td>"+p.perspectiveInliers+" / "+p.matches+" ("+(Number.isFinite(p.perspectiveRatio)?(p.perspectiveRatio*100).toFixed(0):"—")+"%)</td><td>"+(p.error===null?"—":p.error.toFixed(2)+" px")+"</td><td class=\"status-chip "+(ok?"good-text":"weak-text")+"\">"+(ok?"Stronger fit":"Review")+"</td></tr>";}).join("");
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete: "+summary.matchedFeatures+" tracks between the first two frames; "+(third?trajectories.length+" features linked across three frames; ":"")+" "+motion.inliers.length+" support a 2D translation and "+perspective.inliers.length+" support a perspective mapping. These are image-motion diagnostics, not yet camera pose or 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. The first pair has "+summary.matchedFeatures+" matches; "+strong+" pairs meet the lab’s preliminary perspective-support threshold. This is a screening diagnostic, not a calibrated camera trajectory or 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
