@@ -13,6 +13,7 @@ assert.match(html, /reconstructSparseTrajectory/);
 assert.match(html, /id="sparse-points"/);
 assert.match(html, /id="sparse-segments"/);
 assert.match(html, /id="sparse-error"/);
+assert.match(html, /not yet a validated trajectory or 3D reconstruction/);
 assert.match(html, /pair-local points/);
 assert.match(html, /id="focal-length"/);
 assert.match(html, /pose-segments/);
