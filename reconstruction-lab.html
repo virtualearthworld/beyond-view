@@ -42,6 +42,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="metric"><strong id="perspective-support">—</strong><span>Tracks supporting perspective model</span></div>
 <div class="metric"><strong id="perspective-error">—</strong><span>Median perspective fit error</span></div>
 <div class="metric"><strong id="perspective-coverage">—</strong><span>Perspective track spread (x × y)</span></div>
+<div class="metric"><strong id="trajectories">—</strong><span>Features linked across 3 frames</span></div>
 </div>
 </section>
 <section class="panel">
@@ -53,7 +54,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <section class="panel">
 <h2>What this milestone proves—and what it does not</h2>
 <ul>
-<li><b>Implemented here:</b> local frame sampling, corner detection, patch matching, and a visible measurement of image motion.</li>
+<li><b>Implemented here:</b> local frame sampling, corner detection, patch matching, multi-frame feature trajectory linking, and robust 2D motion diagnostics.</li>
 <li><b>Next:</b> robust camera-pose estimation, calibrated triangulation, multi-view consistency checks, and conversion of measured points into textured surfaces.</li>
 <li><b>Not implemented yet:</b> an end-to-end converter or a walkable 3D reconstruction. This page does not claim otherwise.</li>
 </ul>
@@ -61,7 +62,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 </section>
 </main>
 <script type="module">
-import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation } from "./reconstruction/sparse-reconstruction.js";
+import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences } from "./reconstruction/sparse-reconstruction.js";
 import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
@@ -101,9 +102,15 @@ run.addEventListener("click",async()=>{
     const sampled=await sampleVideoFrames(video,{intervalSeconds:1.5,maxFrames:8,width:480});
     if(sampled.length<2)throw new Error("The video is too short to compare two frames.");
     document.querySelector("#frames").textContent=String(sampled.length);
-    const first=sampled[0], second=sampled[Math.min(2,sampled.length-1)];
+    const first=sampled[0], second=sampled[1], third=sampled[2] || null;
     const features=detectFeatures(first,{maxFeatures:180,minDistance:10});
     const tracks=trackFeatures(first,second,features,{searchRadius:18,maxMeanError:26});
+    let trajectories=[];
+    if(third){
+      const middleFeatures=detectFeatures(second,{maxFeatures:180,minDistance:10});
+      const nextTracks=trackFeatures(second,third,middleFeatures,{searchRadius:18,maxMeanError:26});
+      trajectories=linkTrackSequences([tracks,nextTracks],{joinTolerancePixels:5,minObservations:3});
+    }
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
     const perspective=estimateHomographyRansac(summary.tracks,{thresholdPixels:3,iterations:120});
@@ -115,10 +122,11 @@ run.addEventListener("click",async()=>{
     document.querySelector("#perspective-support").textContent=perspective.inliers.length+" / "+summary.matchedFeatures+" ("+(perspective.inlierRatio*100).toFixed(0)+"%)";
     document.querySelector("#perspective-error").textContent=perspective.medianReprojectionErrorPixels===null?"—":perspective.medianReprojectionErrorPixels.toFixed(2)+" px";
     document.querySelector("#perspective-coverage").textContent=Math.round(perspective.coverage.spanX)+" × "+Math.round(perspective.coverage.spanY)+" px";
+    document.querySelector("#trajectories").textContent=third?String(trajectories.length):"Need 3 frames";
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete: "+summary.matchedFeatures+" candidate tracks; "+motion.inliers.length+" support a 2D translation and "+perspective.inliers.length+" support a perspective mapping. These are image-motion diagnostics, not yet camera pose or 3D reconstruction.";
+    status.textContent="Analysis complete: "+summary.matchedFeatures+" tracks between the first two frames; "+(third?trajectories.length+" features linked across three frames; ":"")+" "+motion.inliers.length+" support a 2D translation and "+perspective.inliers.length+" support a perspective mapping. These are image-motion diagnostics, not yet camera pose or 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
