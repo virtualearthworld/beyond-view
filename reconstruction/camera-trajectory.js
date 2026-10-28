@@ -26,7 +26,8 @@ export function estimateCameraTrajectory(framePairs, {
   const segments = [];
   let cumulativeR = identity();
   let cumulativeT = [0,0,0];
-  const poses = [{frame: framePairs[0].fromFrame ?? 0, rotation: identity(), translation: [0,0,0]}];
+  let componentId = 0;
+  const poses = [{frame: framePairs[0].fromFrame ?? 0, rotation: identity(), translation: [0,0,0], componentId, componentOrigin: true, status:"estimated"}];
   for (let index=0; index<framePairs.length; index++) {
     const pair=framePairs[index];
     if (!pair || !Array.isArray(pair.tracks) ||
@@ -40,7 +41,12 @@ export function estimateCameraTrajectory(framePairs, {
     if (estimate.status !== "two-view-pose-estimated" || !estimate.pose) {
       segments.push({index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
         status:estimate.status,pose:null,diagnostics:estimate.epipolar ?? null});
-      poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null});
+      poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null,componentId:null});
+      // The missing relative transform breaks the chain. Restart subsequent
+      // poses in a new local component rather than pretending the path connects.
+      componentId += 1;
+      cumulativeR = identity();
+      cumulativeT = [0,0,0];
       continue;
     }
     const R=estimate.pose.rotation;
@@ -54,9 +60,9 @@ export function estimateCameraTrajectory(framePairs, {
     cumulativeT=add(apply(R,cumulativeT),t);
     cumulativeR=multiply(R,cumulativeR);
     const segment={index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
-      status:"estimated",pose:{rotation:R,translationDirection:t},diagnostics:estimate.epipolar};
+      status:"estimated",componentId,pose:{rotation:R,translationDirection:t},diagnostics:estimate.epipolar};
     segments.push(segment);
-    poses.push({frame:pair.toFrame ?? index+1,rotation:cumulativeR.map(r=>r.slice()),translation:cumulativeT.slice(),status:"estimated"});
+    poses.push({frame:pair.toFrame ?? index+1,rotation:cumulativeR.map(r=>r.slice()),translation:cumulativeT.slice(),status:"estimated",componentId,componentOrigin:index>0 && segments[index-1].status!=="estimated"});
   }
   const estimated=segments.filter(s=>s.status==="estimated").length;
   return {
