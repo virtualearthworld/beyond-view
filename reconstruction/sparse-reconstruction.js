@@ -257,3 +257,54 @@ export function summarizeParallax(frameA, frameB, tracks) {
     limitation: "No calibrated camera pose or metric depth has been solved yet."
   };
 }
+
+
+/**
+ * Link adjacent-frame correspondences into short multi-frame trajectories.
+ * Matching is based only on observed image coordinates; this does not imply
+ * stable 3D identity when an object is occluded or a patch match is wrong.
+ */
+export function linkTrackSequences(pairwiseTracks, {
+  joinTolerancePixels = 3,
+  minObservations = 3
+} = {}) {
+  if (!Array.isArray(pairwiseTracks) ||
+      !Number.isFinite(joinTolerancePixels) || joinTolerancePixels < 0 ||
+      !Number.isInteger(minObservations) || minObservations < 2) {
+    throw new TypeError("Invalid track-sequence options.");
+  }
+  if (pairwiseTracks.length === 0) return [];
+  let trajectories = pairwiseTracks[0]
+    .filter(t => t?.from && t?.to &&
+      [t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite))
+    .map(t => ({ observations: [{...t.from},{...t.to}], patchErrors: [t.patchError].filter(Number.isFinite) }));
+  for (let pairIndex = 1; pairIndex < pairwiseTracks.length; pairIndex++) {
+    const nextTracks = pairwiseTracks[pairIndex].filter(t => t?.from && t?.to &&
+      [t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite));
+    const candidates = [];
+    trajectories.forEach((trajectory, ti) => {
+      const last = trajectory.observations[trajectory.observations.length - 1];
+      nextTracks.forEach((track, ni) => {
+        const error = Math.hypot(last.x-track.from.x,last.y-track.from.y);
+        if (error <= joinTolerancePixels) candidates.push({ti,ni,error});
+      });
+    });
+    candidates.sort((a,b)=>a.error-b.error);
+    const usedTrajectories = new Set(), usedTracks = new Set();
+    const joined = new Map();
+    for (const candidate of candidates) {
+      if (usedTrajectories.has(candidate.ti) || usedTracks.has(candidate.ni)) continue;
+      usedTrajectories.add(candidate.ti); usedTracks.add(candidate.ni);
+      joined.set(candidate.ti, nextTracks[candidate.ni]);
+    }
+    trajectories = trajectories.filter((_,i)=>joined.has(i)).map((trajectory,i)=>{
+      const originalIndex = [...joined.keys()][i];
+      const track = joined.get(originalIndex);
+      return {
+        observations: [...trajectory.observations,{...track.to}],
+        patchErrors: [...trajectory.patchErrors,...(Number.isFinite(track.patchError)?[track.patchError]:[])]
+      };
+    });
+  }
+  return trajectories.filter(t=>t.observations.length>=minObservations);
+}
