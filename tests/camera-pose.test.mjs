@@ -18,4 +18,21 @@ const tn=t.map(x=>x/Math.hypot(...t));
 assert.ok(out.candidates.some(c=>Math.hypot(...c.translationDirection.map((x,i)=>x-tn[i]))<1e-4),"one candidate should recover translation direction");
 assert.throws(()=>recoverCameraPoseCandidates([[0,0,0],[0,0,0],[0,0,0]],K),/degenerate/i);
 assert.throws(()=>recoverCameraPoseCandidates(F,[[1,2],[3,4]]),/3x3/i);
-console.log("Camera-pose candidate regression tests passed.");
+
+import { selectCameraPose } from "../reconstruction/camera-pose.js";
+// Generate measured pixel correspondences from a known 3D point cloud.
+const points=[];
+for(let i=0;i<30;i++){
+  const X=[(i%6-2.5)*0.22, (Math.floor(i/6)-2)*0.17, 3.5+(i%4)*0.35];
+  const X2=R.map((row,j)=>row.reduce((s,z,k)=>s+z*X[k],0)+t[j]);
+  const p1=[800*X[0]/X[2]+320,800*X[1]/X[2]+240];
+  const p2=[800*X2[0]/X2[2]+320,800*X2[1]/X2[2]+240];
+  points.push({from:{x:p1[0],y:p1[1]},to:{x:p2[0],y:p2[1]}});
+}
+const chosen=selectCameraPose(out.candidates,points,K);
+assert.equal(chosen.status,"pose-selected");
+assert.notEqual(chosen.selectedIndex,null);
+assert.ok(chosen.candidates[0].positiveDepthRatio>0.9,"best candidate should put almost all synthetic points in front of both cameras");
+assert.equal(selectCameraPose(out.candidates,points.slice(0,3),K).status,"insufficient-correspondences");
+
+console.log("Camera-pose candidate and cheirality regression tests passed.");
