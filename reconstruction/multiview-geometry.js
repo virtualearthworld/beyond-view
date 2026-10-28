@@ -112,11 +112,19 @@ export function estimateHomographyRansac(tracks, { thresholdPixels=3, iterations
       if(recalculated.length>=bestInliers.length) {bestH=refined;bestInliers=recalculated;}
     }
   }
-  const inlierSet=new Set(bestInliers);
-  // Compare by object identity is unreliable after error metadata is attached; classify by coordinates instead.
-  const keys=new Set(bestInliers.map(t=>[t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
-  const outliers=valid.filter(t=>!keys.has([t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  // Keep original track indices so repeated coordinate pairs are classified correctly.
+  const inlierKeys=new Set(bestInliers.map(t=>[t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  const outliers=valid.filter(t=>!inlierKeys.has([t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  const errors=bestInliers.map(t=>t.homographyErrorPixels).filter(Number.isFinite).sort((a,b)=>a-b);
+  const medianReprojectionErrorPixels=errors.length
+    ? (errors.length%2 ? errors[(errors.length-1)/2] : (errors[errors.length/2-1]+errors[errors.length/2])/2)
+    : null;
+  const xs=bestInliers.map(t=>t.from.x), ys=bestInliers.map(t=>t.from.y);
+  const spanX=xs.length ? Math.max(...xs)-Math.min(...xs) : 0;
+  const spanY=ys.length ? Math.max(...ys)-Math.min(...ys) : 0;
+  const coverage={spanX,spanY};
   return {H:bestH,inliers:bestInliers,outliers,inlierRatio:bestInliers.length/valid.length,
+    medianReprojectionErrorPixels,coverage,
     status:bestInliers.length>=8?"perspective-model-found": "weak-model-support",
     limitation:"A 2D homography can explain planar or rotation-dominated image motion; it does not by itself recover camera pose or scene depth."};
 }
