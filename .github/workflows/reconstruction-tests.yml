@@ -27,4 +27,4 @@ jobs:
         with:
           node-version: 22
       - name: Run reconstruction regression tests
-        run: node --experimental-default-type=module tests/multiview-geometry.test.mjs
+        run: node --experimental-default-type=module tests/multiview-geometry.test.mjs tests/sparse-reconstruction.test.mjs
