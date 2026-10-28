@@ -30,8 +30,8 @@ small{color:var(--muted)}a{color:var(--accent)}
 <h1>Measure what the camera actually saw.</h1>
 <p>This lab runs in your browser. It samples frames from your selected video, detects visual corners, tracks matching image patches, and measures apparent motion between views. The video is processed locally by this page; it is not uploaded.</p>
 <div class="actions"><input id="video-file" type="file" accept="video/*" aria-label="Choose a video"><button id="run" disabled>Analyze frames</button></div>
-<div class="actions"><label for="focal-length">Estimated focal length (pixels):</label><input id="focal-length" type="number" min="100" max="5000" step="10" value="576" style="width:120px" aria-describedby="calibration-note"></div>
-<small id="calibration-note">Starting value is an assumption (1.2 × 480 px analysis width), not verified camera calibration. Change it if you know your camera’s calibrated focal length for the original video; the analysis resizes frames to 480 px.</small>
+<div class="actions"><label for="focal-length">Estimated focal length (pixels):</label><input id="focal-length" type="number" min="100" max="5000" step="10" value="2304" style="width:120px" aria-describedby="calibration-note"></div>
+<small id="calibration-note">Starting value assumes 1.2 × original video width; this is not verified calibration. If known, enter calibrated focal length in original-video pixels; the lab scales it to the 480 px analysis frames.</small>
 <div id="status" role="status" aria-live="polite">Choose a video to begin. This is a real reconstruction-development diagnostic, not a completed 3D conversion.</div>
 <video id="video" hidden muted playsinline preload="metadata"></video>
 <div class="metrics">
@@ -90,6 +90,7 @@ picker.addEventListener("change",()=>{
   url=URL.createObjectURL(file);video.src=url;
   status.className="";status.textContent="Loading selected video locally…";run.disabled=true;
   video.onloadedmetadata=()=>{
+    focalInput.value=String(Math.round(video.videoWidth*1.2));
     document.querySelector("#duration").textContent=video.duration.toFixed(1)+" s";
     status.textContent="Video ready. Select Analyze frames to measure feature movement.";
     run.disabled=false;
@@ -128,7 +129,8 @@ run.addEventListener("click",async()=>{
       pairReports.push({from:sampled[i].time,to:sampled[i+1].time,matches:pairSummary.matchedFeatures,motionInliers:pairMotion.inliers.length,motionRatio:pairMotion.inlierRatio,perspectiveInliers:pairPerspective.inliers.length,perspectiveRatio:pairPerspective.inlierRatio,error:pairPerspective.medianReprojectionErrorPixels});
     }
     const tracks=pairTracks[0]||[];
-    const K=[[focalLength,0,sampled[0].width/2],[0,focalLength,sampled[0].height/2],[0,0,1]];
+    const analysisFocalLength=focalLength*sampled[0].width/video.videoWidth;
+    const K=[[analysisFocalLength,0,sampled[0].width/2],[0,analysisFocalLength,sampled[0].height/2],[0,0,1]];
     const trajectory=estimateCameraTrajectory(pairTracks.map((pairTracksForFrame,i)=>({fromFrame:i,toFrame:i+1,tracks:pairTracksForFrame})),{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
     let trajectories=[];
     if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks.slice(0,2),{joinTolerancePixels:5,minObservations:3});}
@@ -150,12 +152,12 @@ run.addEventListener("click",async()=>{
     document.querySelector("#pair-weak").textContent=String(pairReports.length-strong);
     document.querySelector("#pose-segments").textContent=trajectory.estimatedSegmentCount+" / "+trajectory.segmentCount;
     document.querySelector("#trajectory-status").textContent=trajectory.status;
-    document.querySelector("#calibration-note").textContent="Focal length used: "+focalLength+" px. "+(focalLength===576?"This is the default assumption, not verified calibration. ":"")+"Pose results are provisional and scale is unknown. "+trajectory.limitation;
+    document.querySelector("#calibration-note").textContent="Original-video focal length entered: "+focalLength+" px; scaled to "+analysisFocalLength.toFixed(1)+" px for analysis. Calibration remains unverified unless you supplied a calibrated value. Pose results are provisional and scale is unknown. "+trajectory.limitation;
     document.querySelector("#pair-results").innerHTML=pairReports.map(p=>{const ok=p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3;return "<tr><td>"+p.from.toFixed(1)+"–"+p.to.toFixed(1)+" s</td><td>"+p.matches+"</td><td>"+p.motionInliers+" / "+p.matches+" ("+(Number.isFinite(p.motionRatio)?(p.motionRatio*100).toFixed(0):"—")+"%)</td><td>"+p.perspectiveInliers+" / "+p.matches+" ("+(Number.isFinite(p.perspectiveRatio)?(p.perspectiveRatio*100).toFixed(0):"—")+"%)</td><td>"+(p.error===null?"—":p.error.toFixed(2)+" px")+"</td><td class=\"status-chip "+(ok?"good-text":"weak-text")+"\">"+(ok?"Stronger fit":"Review")+"</td></tr>";}).join("");
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates. Calibration is "+(focalLength===576?"assumed":"user-entered and unverified")+", scale is unknown, and accumulated drift is possible; this is not yet a validated world trajectory or 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates. Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+", scale is unknown, and accumulated drift is possible; this is not yet a validated world trajectory or 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
