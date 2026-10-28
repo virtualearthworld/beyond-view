@@ -80,3 +80,73 @@ export function recoverCameraPoseCandidates(F,K1,K2=K1,{minimumSingularRatio=1e-
     candidates, singularValues:svd.singular,
     limitation:"Four relative-pose candidates are returned. Choose the valid candidate using triangulation and positive-depth (cheirality) checks. Translation scale and absolute world pose are not observable from two views alone."};
 }
+
+
+function inverse3(a) {
+  const d=det(a);
+  if(!Number.isFinite(d)||Math.abs(d)<1e-12) throw new Error("Camera intrinsic matrix is singular.");
+  return [
+    [(a[1][1]*a[2][2]-a[1][2]*a[2][1])/d,(a[0][2]*a[2][1]-a[0][1]*a[2][2])/d,(a[0][1]*a[1][2]-a[0][2]*a[1][1])/d],
+    [(a[1][2]*a[2][0]-a[1][0]*a[2][2])/d,(a[0][0]*a[2][2]-a[0][2]*a[2][0])/d,(a[0][2]*a[1][0]-a[0][0]*a[1][2])/d],
+    [(a[1][0]*a[2][1]-a[1][1]*a[2][0])/d,(a[0][1]*a[2][0]-a[0][0]*a[2][1])/d,(a[0][0]*a[1][1]-a[0][1]*a[1][0])/d]
+  ];
+}
+function solve3(A,b) {
+  const m=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<3;c++){
+    let p=c;for(let r=c+1;r<3;r++)if(Math.abs(m[r][c])>Math.abs(m[p][c]))p=r;
+    if(Math.abs(m[p][c])<1e-11)return null;
+    [m[c],m[p]]=[m[p],m[c]];
+    const q=m[c][c];for(let j=c;j<4;j++)m[c][j]/=q;
+    for(let r=0;r<3;r++)if(r!==c){const z=m[r][c];for(let j=c;j<4;j++)m[r][j]-=z*m[c][j];}
+  }
+  const x=m.map(r=>r[3]);return x.every(Number.isFinite)?x:null;
+}
+function triangulateNormalized(R,t,p1,p2) {
+  const [x,y]=p1,[u,v]=p2;
+  const rows=[[1,0,-x],[0,1,-y],
+    R[0].map((z,i)=>z-u*R[2][i]),
+    R[1].map((z,i)=>z-v*R[2][i])];
+  const rhs=[0,0,u*t[2]-t[0],v*t[2]-t[1]];
+  const ata=Array.from({length:3},()=>Array(3).fill(0)),atb=Array(3).fill(0);
+  for(let k=0;k<rows.length;k++)for(let i=0;i<3;i++){
+    atb[i]+=rows[k][i]*rhs[k];
+    for(let j=0;j<3;j++)ata[i][j]+=rows[k][i]*rows[k][j];
+  }
+  return solve3(ata,atb);
+}
+/**
+ * Choose among the four candidates using positive-depth triangulation.
+ * points are {from:{x,y},to:{x,y}} pixel correspondences. The candidate pose
+ * convention is X2 = R*X1 + t; K1/K2 are the same intrinsics used for recovery.
+ */
+export function selectCameraPose(candidates,points,K1,K2=K1,{minimumPoints=8,minimumPositiveDepthRatio=0.6}={}) {
+  if(!Array.isArray(candidates)||candidates.length!==4||
+     !Array.isArray(points)||!finiteMatrix(K1)||!finiteMatrix(K2)||
+     !Number.isInteger(minimumPoints)||minimumPoints<1||
+     !Number.isFinite(minimumPositiveDepthRatio)||minimumPositiveDepthRatio<=0||minimumPositiveDepthRatio>1)
+    throw new TypeError("Expected four pose candidates, image correspondences, valid intrinsics, and valid selection options.");
+  const valid=points.filter(p=>Number.isFinite(p?.from?.x)&&Number.isFinite(p?.from?.y)&&Number.isFinite(p?.to?.x)&&Number.isFinite(p?.to?.y));
+  if(valid.length<minimumPoints)return {status:"insufficient-correspondences",totalPoints:valid.length,selectedIndex:null,candidates:[]};
+  const iK1=inverse3(K1),iK2=inverse3(K2);
+  const normalized=(inv,p)=>{const q=mv(inv,[p.x,p.y,1]);if(!Number.isFinite(q[2])||Math.abs(q[2])<1e-12)return null;return [q[0]/q[2],q[1]/q[2]];};
+  const scores=candidates.map((candidate,index)=>{
+    if(!finiteMatrix(candidate?.rotation)||!Array.isArray(candidate.translationDirection)||candidate.translationDirection.length!==3||!candidate.translationDirection.every(Number.isFinite))
+      throw new TypeError("Each candidate must contain a 3x3 rotation and a finite translation direction.");
+    let validDepth=0,attempted=0;
+    for(const point of valid){
+      const p1=normalized(iK1,point.from),p2=normalized(iK2,point.to);if(!p1||!p2)continue;
+      const X=triangulateNormalized(candidate.rotation,candidate.translationDirection,p1,p2);if(!X)continue;
+      attempted++;
+      const X2=mv(candidate.rotation,X).map((v,i)=>v+candidate.translationDirection[i]);
+      if(X[2]>1e-8&&X2[2]>1e-8)validDepth++;
+    }
+    return {index,positiveDepthCount:validDepth,triangulatedCount:attempted,
+      positiveDepthRatio:attempted?validDepth/attempted:0};
+  }).sort((a,b)=>b.positiveDepthCount-a.positiveDepthCount||b.positiveDepthRatio-a.positiveDepthRatio);
+  const best=scores[0],ratio=best?.positiveDepthRatio??0;
+  return {status:best&&best.triangulatedCount>=minimumPoints&&ratio>=minimumPositiveDepthRatio?"pose-selected":"ambiguous-pose",
+    selectedIndex:best&&best.triangulatedCount>=minimumPoints&&ratio>=minimumPositiveDepthRatio?best.index:null,
+    totalPoints:valid.length,minimumPositiveDepthRatio,candidates:scores,
+    limitation:"This selects a relative pose only when enough matched points triangulate with positive depth in both cameras. It does not recover absolute scale or validate the real-video pipeline by itself."};
+}
