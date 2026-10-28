@@ -297,13 +297,13 @@ export function linkTrackSequences(pairwiseTracks, {
       usedTrajectories.add(candidate.ti); usedTracks.add(candidate.ni);
       joined.set(candidate.ti, nextTracks[candidate.ni]);
     }
-    trajectories = trajectories.filter((_,i)=>joined.has(i)).map((trajectory,i)=>{
-      const originalIndex = [...joined.keys()][i];
-      const track = joined.get(originalIndex);
-      return {
+    trajectories = trajectories.flatMap((trajectory,index)=>{
+      const track = joined.get(index);
+      if (!track) return [];
+      return [{
         observations: [...trajectory.observations,{...track.to}],
         patchErrors: [...trajectory.patchErrors,...(Number.isFinite(track.patchError)?[track.patchError]:[])]
-      };
+      }];
     });
   }
   return trajectories.filter(t=>t.observations.length>=minObservations);
