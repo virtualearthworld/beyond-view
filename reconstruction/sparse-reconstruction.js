@@ -67,7 +67,9 @@ export function sampleVideoFrames(video, {
       }
     };
     video.addEventListener("seeked", onSeeked);
-    video.currentTime = times[0];
+    // Seeking to the current time (often 0) may not emit a seeked event.
+    // Force an initial seek so the first frame cannot leave analysis hanging.
+    video.currentTime = Math.min(video.duration, Math.max(0.01, times[0]));
   });
 }
 
