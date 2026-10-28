@@ -38,12 +38,13 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="metric"><strong id="matches">—</strong><span>Tracks in selected pair</span></div>
 <div class="metric"><strong id="parallax">—</strong><span>Median image displacement</span></div>
 <div class="metric"><strong id="dominant-motion">—</strong><span>Dominant 2D motion (dx, dy)</span></div>
-<div class="metric"><strong id="motion-support">—</strong><span>Tracks supporting motion model</span></div>
+<div class="metric"><strong id="motion-support">—</strong><span>Tracks supporting 2D translation</span></div>
+<div class="metric"><strong id="perspective-support">—</strong><span>Tracks supporting perspective model</span></div>
 </div>
 </section>
 <section class="panel">
 <h2>Observed feature movement</h2>
-<p>The overlay shows measured image correspondences between two frames. Lines are observations from the video—not guessed objects or a 3D scene. The lab now also estimates a dominant 2D translation and rejects tracks that disagree with it. This simple model is only a diagnostic; real camera rotation and perspective still require a full pose solver.</p>
+<p>The overlay shows measured image correspondences between two frames. Lines are observations from the video—not guessed objects or a 3D scene. The lab now compares a robust 2D translation model with a robust perspective homography, rejecting tracks that disagree with each model. A homography can explain some perspective changes, but it is not a 3D camera-pose solution.</p>
 <canvas id="stage" width="960" height="540" aria-label="Feature tracking visualization"></canvas>
 <small id="caption">After analysis, the first sampled frame and tracked feature movements will appear here.</small>
 </section>
@@ -59,6 +60,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 </main>
 <script type="module">
 import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation } from "./reconstruction/sparse-reconstruction.js";
+import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -102,15 +104,17 @@ run.addEventListener("click",async()=>{
     const tracks=trackFeatures(first,second,features,{searchRadius:18,maxMeanError:26});
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
+    const perspective=estimateHomographyRansac(summary.tracks,{thresholdPixels:3,iterations:120});
     document.querySelector("#features").textContent=String(features.length);
     document.querySelector("#matches").textContent=String(summary.matchedFeatures);
     document.querySelector("#parallax").textContent=summary.medianDisplacementPixels.toFixed(2)+" px";
     document.querySelector("#dominant-motion").textContent=motion.dx===null?"Not enough":motion.dx.toFixed(1)+", "+motion.dy.toFixed(1)+" px";
     document.querySelector("#motion-support").textContent=motion.inliers.length+" / "+summary.matchedFeatures+" ("+(motion.inlierRatio*100).toFixed(0)+"%)";
+    document.querySelector("#perspective-support").textContent=perspective.inliers.length+" / "+summary.matchedFeatures+" ("+(perspective.inlierRatio*100).toFixed(0)+"%)";
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete: measured "+summary.matchedFeatures+" candidate tracks; "+motion.inliers.length+" support a simple 2D motion model. This is a diagnostic only—not camera pose or a 3D reconstruction.";
+    status.textContent="Analysis complete: "+summary.matchedFeatures+" candidate tracks; "+motion.inliers.length+" support a 2D translation and "+perspective.inliers.length+" support a perspective mapping. These are image-motion diagnostics, not yet camera pose or 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
