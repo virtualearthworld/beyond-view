@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { detectFeatures, summarizeParallax, trackFeatures } from "../reconstruction/sparse-reconstruction.js";
+import { detectFeatures, summarizeParallax, trackFeatures, estimateDominantTranslation } from "../reconstruction/sparse-reconstruction.js";
 
 // Deterministic textured frame: corner detection must find image evidence,
 // not fabricate a feature list for a blank frame.
@@ -70,3 +70,19 @@ assert.equal(summary.status, "insufficient-tracks", "small track sets must not c
 assert.match(summary.limitation, /camera pose|depth/i);
 
 console.log("sparse reconstruction tests passed");
+
+const motionTracks = [
+  ...Array.from({ length: 8 }, (_, i) => ({
+    from: { x: i * 10, y: i * 5 },
+    to: { x: i * 10 + 4, y: i * 5 + 2 }
+  })),
+  { from: { x: 30, y: 30 }, to: { x: 90, y: 5 } }
+];
+const motion = estimateDominantTranslation(motionTracks, { inlierThreshold: 2 });
+assert.equal(motion.dx, 4);
+assert.equal(motion.dy, 2);
+assert.equal(motion.inliers.length, 8);
+assert.equal(motion.outliers.length, 1);
+assert.equal(motion.status, "dominant-translation-found");
+assert.ok(motion.inlierRatio > 0.8);
+console.log("dominant motion robust-outlier test passed");
