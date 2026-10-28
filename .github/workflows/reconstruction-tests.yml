@@ -30,3 +30,4 @@ jobs:
         run: |
           node --experimental-default-type=module tests/multiview-geometry.test.mjs
           node --experimental-default-type=module tests/sparse-reconstruction.test.mjs
+          node --experimental-default-type=module tests/parallax-diagnostics.test.mjs
