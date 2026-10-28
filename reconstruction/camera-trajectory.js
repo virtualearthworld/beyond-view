@@ -54,7 +54,10 @@ export function estimateCameraTrajectory(framePairs, {
     if (Math.abs(determinant(R)-1)>0.05 || Math.abs(norm(t)-1)>1e-5) {
       segments.push({index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
         status:"invalid-pose-matrix",pose:null});
-      poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null});
+      poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null,componentId:null});
+      componentId += 1;
+      cumulativeR = identity();
+      cumulativeT = [0,0,0];
       continue;
     }
     cumulativeT=add(apply(R,cumulativeT),t);
