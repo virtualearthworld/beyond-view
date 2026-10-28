@@ -4,6 +4,12 @@
 
 Beyond View is an early browser prototype for a social platform where people can watch a creator's video and, when a compatible reconstructed scene is available, enter that environment in 3D.
 
+## First-party reconstruction lab (new development milestone)
+
+Open the browser-based [Reconstruction Lab](./reconstruction-lab.html) from the main workspace. It uses code maintained in this repository to sample frames locally, detect image corners, track image patches between views, and visualize measured feature movement. The selected video is not uploaded by this diagnostic page.
+
+This is a measurement stage only. It does **not** yet estimate camera pose, produce a 3D mesh, or enable walking in a reconstructed scene. The next engineering stages are robust camera-pose estimation, multiview triangulation, surface construction and texturing, then a viewer with movement constrained to measured geometry. No unseen scenery should be fabricated.
+
 ## Current prototype
 
 - `index.html`: responsive landing page with local video preview.
