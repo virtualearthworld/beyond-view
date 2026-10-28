@@ -40,6 +40,8 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="metric"><strong id="dominant-motion">—</strong><span>Dominant 2D motion (dx, dy)</span></div>
 <div class="metric"><strong id="motion-support">—</strong><span>Tracks supporting 2D translation</span></div>
 <div class="metric"><strong id="perspective-support">—</strong><span>Tracks supporting perspective model</span></div>
+<div class="metric"><strong id="perspective-error">—</strong><span>Median perspective fit error</span></div>
+<div class="metric"><strong id="perspective-coverage">—</strong><span>Perspective track spread (x × y)</span></div>
 </div>
 </section>
 <section class="panel">
@@ -111,6 +113,8 @@ run.addEventListener("click",async()=>{
     document.querySelector("#dominant-motion").textContent=motion.dx===null?"Not enough":motion.dx.toFixed(1)+", "+motion.dy.toFixed(1)+" px";
     document.querySelector("#motion-support").textContent=motion.inliers.length+" / "+summary.matchedFeatures+" ("+(motion.inlierRatio*100).toFixed(0)+"%)";
     document.querySelector("#perspective-support").textContent=perspective.inliers.length+" / "+summary.matchedFeatures+" ("+(perspective.inlierRatio*100).toFixed(0)+"%)";
+    document.querySelector("#perspective-error").textContent=perspective.medianReprojectionErrorPixels===null?"—":perspective.medianReprojectionErrorPixels.toFixed(2)+" px";
+    document.querySelector("#perspective-coverage").textContent=Math.round(perspective.coverage.spanX)+" × "+Math.round(perspective.coverage.spanY)+" px";
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
