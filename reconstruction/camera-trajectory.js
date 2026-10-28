@@ -68,10 +68,25 @@ export function estimateCameraTrajectory(framePairs, {
     poses.push({frame:pair.toFrame ?? index+1,rotation:cumulativeR.map(r=>r.slice()),translation:cumulativeT.slice(),status:"estimated",componentId,componentOrigin:index>0 && segments[index-1].status!=="estimated"});
   }
   const estimated=segments.filter(s=>s.status==="estimated").length;
+  const componentIds=[...new Set(segments.filter(s=>s.status==="estimated").map(s=>s.componentId))];
+  const components=componentIds.map(id=>{
+    const componentSegments=segments.filter(s=>s.status==="estimated"&&s.componentId===id);
+    const componentPoses=poses.filter(p=>p.status==="estimated"&&p.componentId===id);
+    return {
+      componentId:id,
+      segmentCount:componentSegments.length,
+      fromFrame:componentSegments[0].fromFrame,
+      toFrame:componentSegments[componentSegments.length-1].toFrame,
+      segmentIndices:componentSegments.map(s=>s.index),
+      poses:componentPoses
+    };
+  });
+  const longestConnectedSegmentCount=components.reduce((longest,c)=>Math.max(longest,c.segmentCount),0);
   return {
     status:estimated===segments.length?"trajectory-estimated":estimated>0?"partial-trajectory":"trajectory-unavailable",
     segmentCount:segments.length,estimatedSegmentCount:estimated,
     estimatedSegmentRatio:estimated/segments.length,segments,poses,
+    connectedComponentCount:components.length,components,longestConnectedSegmentCount,
     scaleKnown:false,
     limitation:"This is a relative, unit-baseline trajectory. Failed segments remain explicit gaps; accumulated translation is not metric and may drift. Use verified calibration and multi-frame bundle adjustment/loop closure before treating it as a stable world trajectory."
   };
