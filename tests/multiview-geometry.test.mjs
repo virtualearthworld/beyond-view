@@ -30,6 +30,27 @@ assert.equal(sparse.length, 1);
 assert.equal(sparse[0].observations, 2);
 console.log("multiview geometry tests passed");
 
+// A point behind both cameras can still satisfy image equations. It must not
+// be accepted as a visible 3D reconstruction point.
+const behind = [-0.2, 0.1, -5];
+const behind1 = projectPoint(P1, behind);
+const behind2 = projectPoint(P2, behind);
+const rejectedBehind = triangulateTracks(P1, P2, [{
+  from: {x: behind1[0], y: behind1[1]},
+  to: {x: behind2[0], y: behind2[1]}
+}]);
+assert.equal(rejectedBehind.length, 0,
+  "triangulation must reject points with negative camera-space depth");
+const allowedBehind = triangulateTracks(P1, P2, [{
+  from: {x: behind1[0], y: behind1[1]},
+  to: {x: behind2[0], y: behind2[1]}
+}], {requirePositiveDepth: false});
+assert.equal(allowedBehind.length, 1,
+  "positive-depth filtering should be explicitly switchable for nonstandard camera conventions");
+assert.throws(() => triangulateTracks(P1, P2, [], {maxReprojectionError: -1}),
+  /Invalid triangulation quality options/);
+console.log("triangulation visibility and option validation tests passed");
+
 const knownH = [1.1, 0.05, 7, -0.03, 0.95, 4, 0.0008, -0.0004, 1];
 const perspectiveTracks = [];
 for (let y = 0; y < 4; y++) {
