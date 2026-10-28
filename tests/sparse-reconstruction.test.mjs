@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { detectFeatures, summarizeParallax } from "../reconstruction/sparse-reconstruction.js";
+import { detectFeatures, summarizeParallax, trackFeatures } from "../reconstruction/sparse-reconstruction.js";
 
 // Deterministic textured frame: corner detection must find image evidence,
 // not fabricate a feature list for a blank frame.
@@ -17,10 +17,45 @@ function texturedFrame(width, height) {
   return { width, height, rgba };
 }
 
+
+function shiftFrame(source, dx, dy) {
+  const rgba = new Uint8ClampedArray(source.width * source.height * 4);
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      const sx = x - dx, sy = y - dy;
+      const to = (y * source.width + x) * 4;
+      if (sx >= 0 && sx < source.width && sy >= 0 && sy < source.height) {
+        const from = (sy * source.width + sx) * 4;
+        rgba[to] = source.rgba[from];
+        rgba[to + 1] = source.rgba[from + 1];
+        rgba[to + 2] = source.rgba[from + 2];
+        rgba[to + 3] = 255;
+      } else {
+        rgba[to] = rgba[to + 1] = rgba[to + 2] = 0;
+        rgba[to + 3] = 255;
+      }
+    }
+  }
+  return { width: source.width, height: source.height, rgba };
+}
+
 const frame = texturedFrame(96, 72);
 const features = detectFeatures(frame, { maxFeatures: 80, minDistance: 5 });
 assert.ok(features.length > 0, "textured frame should yield detectable corners");
 assert.ok(features.length <= 80, "feature count must respect configured limit");
+
+// Known synthetic camera/image motion: a translated texture should track with
+// the measured displacement, giving us an end-to-end test of the matching step.
+const movedFrame = shiftFrame(frame, 4, 2);
+const measuredTracks = trackFeatures(frame, movedFrame, features, {
+  searchRadius: 8, patchRadius: 2, maxMeanError: 3, uniqueness: 0.9
+});
+assert.ok(measuredTracks.length >= 5, "translated texture should produce consistent tracks");
+const correctMotion = measuredTracks.filter(t =>
+  t.to.x - t.from.x === 4 && t.to.y - t.from.y === 2
+);
+assert.ok(correctMotion.length / measuredTracks.length >= 0.7,
+  "most accepted tracks should recover the known +4,+2 pixel translation");
 
 const frameB = texturedFrame(96, 72);
 const tracks = [
