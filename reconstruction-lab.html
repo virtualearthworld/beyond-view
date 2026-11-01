@@ -58,7 +58,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <h2>Multi-frame consistency check</h2>
 <p>This compares each adjacent sampled pair across the clip. It reports feature matches, robust 2D-motion support, and perspective-model support separately. These are useful stability clues, not a calibrated 3D trajectory; no failed pair is filled in with invented motion.</p>
 <div class="metrics"><div class="metric"><strong id="fusion-components">—</strong><span>Connected camera components</span></div><div class="metric"><strong id="fused-points">—</strong><span>Provisional fused points</span></div><div class="metric"><strong id="fusion-observations">—</strong><span>Accepted observations</span></div><div class="metric"><strong id="fusion-rejected">—</strong><span>Rejected observations</span></div></div><div class="metrics"><div class="metric"><strong id="pair-count">—</strong><span>Adjacent pairs analyzed</span></div><div class="metric"><strong id="pair-strong">—</strong><span>Pairs with strong perspective support</span></div><div class="metric"><strong id="pair-weak">—</strong><span>Pairs needing review</span></div><div class="metric"><strong id="pose-segments">—</strong><span>Pairs with estimated relative pose</span></div><div class="metric"><strong id="trajectory-status">—</strong><span>Provisional trajectory status</span></div><div class="metric"><strong id="sparse-points">—</strong><span>Filtered sparse 3D points (pair-local)</span></div><div class="metric"><strong id="sparse-segments">—</strong><span>Pairs with enough valid 3D points</span></div><div class="metric"><strong id="sparse-error">—</strong><span>Median 3D-point reprojection error</span></div></div>
-<div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Matches</th><th>2D motion support</th><th>Perspective support</th><th>Median fit error</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="6">Analyze a video to populate this report.</td></tr></tbody></table></div>
+<div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Features</th><th>Matches</th><th>2D motion support</th><th>Perspective support</th><th>3D accepted / input</th><th>3D rejection reasons</th><th>Median fit error</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="9">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
 <h2>First sparse 3D point-cloud preview</h2>
@@ -169,7 +169,7 @@ run.addEventListener("click",async()=>{
       const pairSummary=summarizeParallax(sampled[i],sampled[i+1],tracksForPair);
       const pairMotion=estimateDominantTranslation(pairSummary.tracks,{inlierThreshold:3});
       const pairPerspective=estimateHomographyRansac(pairSummary.tracks,{thresholdPixels:3,iterations:120});
-      pairReports.push({from:sampled[i].time,to:sampled[i+1].time,matches:pairSummary.matchedFeatures,motionInliers:pairMotion.inliers.length,motionRatio:pairMotion.inlierRatio,perspectiveInliers:pairPerspective.inliers.length,perspectiveRatio:pairPerspective.inlierRatio,error:pairPerspective.medianReprojectionErrorPixels});
+      pairReports.push({from:sampled[i].time,to:sampled[i+1].time,features:featureSets[i].length,matches:pairSummary.matchedFeatures,motionInliers:pairMotion.inliers.length,motionRatio:pairMotion.inlierRatio,perspectiveInliers:pairPerspective.inliers.length,perspectiveRatio:pairPerspective.inlierRatio,error:pairPerspective.medianReprojectionErrorPixels});
     }
     const tracks=pairTracks[0]||[];
     const analysisFocalLength=focalLength*sampled[0].width/video.videoWidth;
@@ -220,7 +220,13 @@ run.addEventListener("click",async()=>{
     document.querySelector("#fusion-observations").textContent=String(fusion.acceptedObservations);
     document.querySelector("#fusion-rejected").textContent=String(fusion.rejectedObservations);
     document.querySelector("#calibration-note").textContent="Original-video focal length entered: "+focalLength+" px; scaled to "+analysisFocalLength.toFixed(1)+" px for analysis. Calibration remains unverified unless you supplied a calibrated value. Pose results are provisional and scale is unknown. "+trajectory.limitation;
-    document.querySelector("#pair-results").innerHTML=pairReports.map(p=>{const ok=p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3;return "<tr><td>"+p.from.toFixed(1)+"–"+p.to.toFixed(1)+" s</td><td>"+p.matches+"</td><td>"+p.motionInliers+" / "+p.matches+" ("+(Number.isFinite(p.motionRatio)?(p.motionRatio*100).toFixed(0):"—")+"%)</td><td>"+p.perspectiveInliers+" / "+p.matches+" ("+(Number.isFinite(p.perspectiveRatio)?(p.perspectiveRatio*100).toFixed(0):"—")+"%)</td><td>"+(p.error===null?"—":p.error.toFixed(2)+" px")+"</td><td class=\"status-chip "+(ok?"good-text":"weak-text")+"\">"+(ok?"Stronger fit":"Review")+"</td></tr>";}).join("");
+    document.querySelector("#pair-results").innerHTML=pairReports.map((p,i)=>{
+      const d=sparse.segments[i]?.diagnostics;
+      const reasons=d?("triangulation "+d.triangulationFailures+", behind camera "+d.negativeDepth+", projection "+d.projectionFailures+", reprojection "+d.reprojectionRejected):(sparse.segments[i]?.status||"not evaluated");
+      const accepted=d?d.accepted+" / "+d.inputTracks:"—";
+      const ok=p.matches>=12&&p.perspectiveRatio>=0.55&&p.error!==null&&p.error<=3;
+      return "<tr><td>"+p.from.toFixed(1)+"–"+p.to.toFixed(1)+" s</td><td>"+p.features+"</td><td>"+p.matches+"</td><td>"+p.motionInliers+" / "+p.matches+" ("+(Number.isFinite(p.motionRatio)?(p.motionRatio*100).toFixed(0):"—")+"%)</td><td>"+p.perspectiveInliers+" / "+p.matches+" ("+(Number.isFinite(p.perspectiveRatio)?(p.perspectiveRatio*100).toFixed(0):"—")+"%)</td><td>"+accepted+"</td><td>"+reasons+"</td><td>"+(p.error===null?"—":p.error.toFixed(2)+" px")+"</td><td class=\\"status-chip "+(ok?"good-text":"weak-text")+"\\">"+(ok?"Stronger fit":"Review")+"</td></tr>";
+    }).join("");
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
