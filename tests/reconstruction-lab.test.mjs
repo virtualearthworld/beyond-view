@@ -50,3 +50,9 @@ assert.match(html, /cloudYaw/);
 assert.match(html, /cloudZoom/);
 assert.match(html, /Shift-drag to pan/);
 console.log("interactive sparse cloud controls integration test passed");
+
+assert.match(html, /3D accepted \/ input/);
+assert.match(html, /3D rejection reasons/);
+assert.match(html, /triangulationFailures/);
+assert.match(html, /reprojectionRejected/);
+console.log("per-pair reconstruction diagnostics integration tests passed");
