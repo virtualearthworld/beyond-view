@@ -62,7 +62,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
     const pose = poseSegment.pose;
     const P2 = projectionMatrix(K, pose.rotation, pose.translationDirection);
     const points = [];
-    const diagnostics = { inputTracks: pair.tracks.length, triangulationFailures: 0,
+    const diagnostics = { inputTracks: pair.tracks.length, invalidTracks: 0, triangulationFailures: 0,
       negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, accepted: 0 };
     const cameraDepth = (P, point) => P[8] * point[0] + P[9] * point[1] + P[10] * point[2] + P[11];
     for (const track of pair.tracks) {
