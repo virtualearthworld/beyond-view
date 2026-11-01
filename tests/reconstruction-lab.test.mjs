@@ -35,3 +35,9 @@ assert.match(html, /fused-points/);
 assert.match(html, /fusion-observations/);
 assert.match(html, /fusion-rejected/);
 assert.match(html, /connected camera components/);
+
+assert.match(html, /classifyTrackMotionAgainstBackground/);
+assert.match(html, /id="background-tracks"/);
+assert.match(html, /id="residual-tracks"/);
+assert.match(html, /possible moving-subject, parallax, occlusion/);
+console.log("background and residual motion diagnostics integration test passed");
