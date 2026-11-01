@@ -41,7 +41,7 @@ export function estimateCameraTrajectory(framePairs, {
     });
     if (estimate.status !== "two-view-pose-estimated" || !estimate.pose) {
       segments.push({index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
-        status:estimate.status,pose:null,diagnostics:estimate.epipolar ?? null});
+        status:estimate.status,pose:null,diagnostics:{...estimate.epipolar,poseQuality:estimate.candidateScores?.find(score=>score.index===estimate.selectedCandidateIndex)??null} ?? null});
       poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null,componentId:null});
       // The missing relative transform breaks the chain. Restart subsequent
       // poses in a new local component rather than pretending the path connects.
