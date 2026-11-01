@@ -39,3 +39,4 @@ jobs:
           node --experimental-default-type=module tests/trajectory-reconstruction.test.mjs
           node --experimental-default-type=module tests/sparse-cloud-view.test.mjs
           node --experimental-default-type=module tests/point-cloud-fusion.test.mjs
+          node --experimental-default-type=module tests/component-fusion-integration.test.mjs
