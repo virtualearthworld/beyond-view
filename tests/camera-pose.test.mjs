@@ -33,7 +33,8 @@ const chosen=selectCameraPose(out.candidates,points,K);
 assert.equal(chosen.status,"pose-selected");
 assert.notEqual(chosen.selectedIndex,null);
 assert.ok(chosen.candidates[0].medianReprojectionErrorPixels<1e-3,"correct pose should reproject noiseless synthetic points accurately");
-const strictReprojection=selectCameraPose(out.candidates,points,K,K,{maximumMedianReprojectionErrorPixels:1e-12});
+const perturbedPoints=points.map(p=>({from:{x:p.from.x+0.25,y:p.from.y-0.15},to:{x:p.to.x-0.2,y:p.to.y+0.1}}));
+const strictReprojection=selectCameraPose(out.candidates,perturbedPoints,K,K,{maximumMedianReprojectionErrorPixels:1e-12});
 assert.equal(strictReprojection.status,"ambiguous-pose","pose should be withheld when reprojection threshold is not met");
 assert.equal(strictReprojection.selectedIndex,null);
 
