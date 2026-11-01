@@ -5,7 +5,7 @@ const html = await readFile(new URL("../reconstruction-lab.html", import.meta.ur
 assert.match(html, /Multi-frame consistency check/);
 assert.match(html, /intervalSeconds:1\.5,maxFrames:16,width:480/);
 assert.match(html, /for\(let i=0;i<sampled\.length-1;i\+\+\)/);
-assert.match(html, /pairReports\.map\(p=>/);
+assert.match(html, /pairReports\.map\(\(p,i\)=>/);
 assert.match(html, /globally aligned or metric 3D reconstruction/);
 assert.match(html, /featureSets\[0\]\.length/);
 assert.match(html, /estimateCameraTrajectory/);
