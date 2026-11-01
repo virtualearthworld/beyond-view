@@ -133,6 +133,12 @@ export function selectCameraPose(candidates,points,K1,K2=K1,{minimumPoints=8,min
   const scores=candidates.map((candidate,index)=>{
     if(!finiteMatrix(candidate?.rotation)||!Array.isArray(candidate.translationDirection)||candidate.translationDirection.length!==3||!candidate.translationDirection.every(Number.isFinite))
       throw new TypeError("Each candidate must contain a 3x3 rotation and a finite translation direction.");
+    const RtR=mm(tr(candidate.rotation),candidate.rotation);
+    const orthogonalityError=Math.sqrt(RtR.reduce((sum,row,i)=>sum+row.reduce((s,x,j)=>s+(x-(i===j?1:0))**2,0),0));
+    const rotationDeterminant=det(candidate.rotation);
+    const translationNorm=norm(candidate.translationDirection);
+    if(orthogonalityError>1e-3||Math.abs(rotationDeterminant-1)>1e-3||Math.abs(translationNorm-1)>1e-3)
+      throw new TypeError("Pose candidate must contain a proper orthonormal rotation and a unit translation direction.");
     let validDepth=0,attempted=0;
     for(const point of valid){
       const p1=normalized(iK1,point.from),p2=normalized(iK2,point.to);if(!p1||!p2)continue;
