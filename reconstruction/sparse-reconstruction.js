@@ -154,32 +154,39 @@ export function trackFeatures(a, b, features, {
   searchRadius = 28,
   patchRadius = 3,
   maxMeanError = 24,
-  uniqueness = 0.88
+  uniqueness = 0.88,
+  uniquenessRadius = Math.max(4, patchRadius * 2)
 } = {}) {
+  if (!Number.isFinite(uniquenessRadius) || uniquenessRadius < 0) {
+    throw new TypeError("uniquenessRadius must be a non-negative number.");
+  }
   const tracks = [];
   for (const p of features) {
-    let best = Infinity, second = Infinity, match = null;
+    const candidates = [];
     const minX = Math.max(patchRadius + 1, p.x - searchRadius);
     const maxX = Math.min(b.width - patchRadius - 2, p.x + searchRadius);
     const minY = Math.max(patchRadius + 1, p.y - searchRadius);
     const maxY = Math.min(b.height - patchRadius - 2, p.y + searchRadius);
     for (let y = minY; y <= maxY; y += 2) {
       for (let x = minX; x <= maxX; x += 2) {
-        const e = patchError(a, p.x, p.y, b, x, y, patchRadius);
-        if (e < best) {
-          second = best;
-          best = e;
-          match = { x, y };
-        } else if (e < second) {
-          second = e;
-        }
+        candidates.push({
+          x, y,
+          error: patchError(a, p.x, p.y, b, x, y, patchRadius)
+        });
       }
     }
-    if (match && best <= maxMeanError && best < second * uniqueness) {
+    candidates.sort((left, right) => left.error - right.error);
+    const best = candidates[0];
+    const second = candidates.find(candidate =>
+      Math.hypot(candidate.x - best.x, candidate.y - best.y) >= uniquenessRadius
+    );
+    if (best && best.error <= maxMeanError &&
+        (!second || best.error < second.error * uniqueness)) {
+      const match = { x: best.x, y: best.y };
       tracks.push({
         from: { x: p.x, y: p.y },
         to: match,
-        patchError: best,
+        patchError: best.error,
         parallaxPixels: Math.hypot(match.x - p.x, match.y - p.y)
       });
     }
