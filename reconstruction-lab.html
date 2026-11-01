@@ -63,7 +63,8 @@ small{color:var(--muted)}a{color:var(--accent)}
 <section class="panel">
 <h2>First sparse 3D point-cloud preview</h2>
 <p>This diagnostic view renders accepted points from the first frame pair that has enough valid 3D points. It is an exploratory projection of a pair-local cloud, not a fused or textured environment; orientation and scale are provisional.</p>
-<canvas id="cloud-stage" width="640" height="360" aria-label="Sparse 3D point cloud preview" style="width:100%;display:block;background:#080a10;border-radius:12px"></canvas>
+<div class="actions" aria-label="3D point-cloud view controls"><button id="cloud-reset" type="button">Reset view</button><small>Drag to rotate · Scroll to zoom · Shift-drag to pan</small></div>
+<canvas id="cloud-stage" width="640" height="360" tabindex="0" aria-label="Interactive sparse 3D point cloud preview. Drag to rotate, scroll to zoom, shift-drag to pan." style="width:100%;display:block;background:#080a10;border-radius:12px;touch-action:none;cursor:grab"></canvas>
 <small id="cloud-caption">Analyze a video to try the sparse point preview.</small>
 </section>
 <section class="panel">
@@ -92,7 +93,7 @@ const canvas=document.querySelector("#stage");
 const ctx=canvas.getContext("2d");
 const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
-let url=null;
+let url=null, cloudPoints=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
 picker.addEventListener("change",()=>{
   if(url) URL.revokeObjectURL(url);
   const file=picker.files?.[0];
@@ -109,20 +110,36 @@ picker.addEventListener("change",()=>{
   video.onerror=()=>{status.textContent="The browser could not decode this video format.";run.disabled=true;};
 });
 function drawSparseCloud(points){
+  cloudPoints=Array.isArray(points)?points:[];
   cloudCtx.clearRect(0,0,cloudCanvas.width,cloudCanvas.height);
   cloudCtx.fillStyle="#aab3c5";cloudCtx.font="14px system-ui";
   cloudCtx.fillText("Sparse 3D points · pair-local coordinates",16,22);
-  const view=projectSparseCloud(points,{width:cloudCanvas.width,height:cloudCanvas.height,margin:28});
+  const view=projectSparseCloud(cloudPoints,{width:cloudCanvas.width,height:cloudCanvas.height,margin:28,yaw:cloudYaw,pitch:cloudPitch});
   if(!view.points.length){cloudCtx.fillText("No pair produced enough accepted 3D points yet.",16,52);
     document.querySelector("#cloud-caption").textContent="No valid sparse cloud available for this clip.";return;}
   const depths=view.points.map(p=>p.depth),lo=Math.min(...depths),hi=Math.max(...depths);
   for(const p of view.points){
+    const x=cloudCanvas.width/2+(p.x-cloudCanvas.width/2)*cloudZoom+cloudPanX;
+    const y=cloudCanvas.height/2+(p.y-cloudCanvas.height/2)*cloudZoom+cloudPanY;
+    if(x < -10 || x > cloudCanvas.width+10 || y < -10 || y > cloudCanvas.height+10) continue;
     const q=hi-lo>1e-8?(p.depth-lo)/(hi-lo):0.5;
     cloudCtx.fillStyle="rgba(139,233,223,"+(0.45+0.5*q)+")";
-    cloudCtx.beginPath();cloudCtx.arc(p.x,p.y,Math.max(1.5,3.2-1.4*q),0,Math.PI*2);cloudCtx.fill();
+    cloudCtx.beginPath();cloudCtx.arc(x,y,Math.max(1.5,3.2-1.4*q)*Math.min(cloudZoom,2),0,Math.PI*2);cloudCtx.fill();
   }
-  document.querySelector("#cloud-caption").textContent=view.pointCount+" accepted points from the first qualifying frame pair. Depth shading is relative only; calibration, metric scale, and multi-frame fusion remain unverified.";
+  document.querySelector("#cloud-caption").textContent=view.pointCount+" accepted points from the first qualifying frame pair. Drag to rotate; scroll to zoom; Shift-drag to pan. Pair-local orientation and scale remain provisional.";
 }
+cloudCanvas.addEventListener("pointerdown",event=>{cloudDrag={x:event.clientX,y:event.clientY,pan:event.shiftKey};cloudCanvas.setPointerCapture(event.pointerId);cloudCanvas.style.cursor="grabbing";});
+cloudCanvas.addEventListener("pointermove",event=>{
+  if(!cloudDrag)return;
+  const dx=event.clientX-cloudDrag.x,dy=event.clientY-cloudDrag.y;cloudDrag.x=event.clientX;cloudDrag.y=event.clientY;
+  if(cloudDrag.pan){cloudPanX+=dx*cloudCanvas.width/cloudCanvas.clientWidth;cloudPanY+=dy*cloudCanvas.height/cloudCanvas.clientHeight;}
+  else{cloudYaw+=dx*0.01;cloudPitch=Math.max(-1.45,Math.min(1.45,cloudPitch+dy*0.01));}
+  drawSparseCloud(cloudPoints);
+});
+function endCloudDrag(){cloudDrag=null;cloudCanvas.style.cursor="grab";}
+cloudCanvas.addEventListener("pointerup",endCloudDrag);cloudCanvas.addEventListener("pointercancel",endCloudDrag);
+cloudCanvas.addEventListener("wheel",event=>{event.preventDefault();cloudZoom=Math.max(0.35,Math.min(5,cloudZoom*Math.exp(-event.deltaY*0.001)));drawSparseCloud(cloudPoints);},{passive:false});
+document.querySelector("#cloud-reset").addEventListener("click",()=>{cloudYaw=0.55;cloudPitch=-0.25;cloudZoom=1;cloudPanX=0;cloudPanY=0;drawSparseCloud(cloudPoints);});
 function drawPair(a,b,tracks){
   canvas.width=a.width;canvas.height=a.height;
   const image=ctx.createImageData(a.width,a.height);
