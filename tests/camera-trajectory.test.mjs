@@ -19,7 +19,7 @@ const trajectory=estimateCameraTrajectory([
   {fromFrame:3,toFrame:4,tracks}
 ],{K,iterations:350,thresholdPixels:1.5,minInliers:20,minimumPoints:12});
 assert.equal(trajectory.segmentCount,4);
-assert.equal(trajectory.poses.length,5);
+assert.equal(trajectory.poses.length,6,"a restarted component needs an explicit origin pose");
 assert.equal(trajectory.scaleKnown,false);
 assert.ok(["trajectory-estimated","partial-trajectory","trajectory-unavailable"].includes(trajectory.status));
 assert.equal(trajectory.segments[2].status,"insufficient-epipolar-support");
