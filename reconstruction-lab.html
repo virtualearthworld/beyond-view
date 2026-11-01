@@ -81,6 +81,7 @@ import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, es
 import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 import { estimateCameraTrajectory } from "./reconstruction/camera-trajectory.js";
 import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconstruction.js";
+import { fuseSparsePointClouds } from "./reconstruction/point-cloud-fusion.js";
 import { projectSparseCloud } from "./reconstruction/sparse-cloud-view.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
@@ -159,6 +160,7 @@ run.addEventListener("click",async()=>{
     const framePairs=pairTracks.map((tracks,i)=>({fromFrame:i,toFrame:i+1,tracks}));
     const trajectory=estimateCameraTrajectory(framePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
     const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
+    const fusion=fuseSparsePointClouds(sparse,trajectory);
     const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
     drawSparseCloud(previewSegment?.points || []);
     let trajectories=[];
