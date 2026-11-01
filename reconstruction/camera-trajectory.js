@@ -27,6 +27,7 @@ export function estimateCameraTrajectory(framePairs, {
   let cumulativeR = identity();
   let cumulativeT = [0,0,0];
   let componentId = 0;
+  let componentOriginPending = false;
   const poses = [{frame: framePairs[0].fromFrame ?? 0, rotation: identity(), translation: [0,0,0], componentId, componentOrigin: true, status:"estimated"}];
   for (let index=0; index<framePairs.length; index++) {
     const pair=framePairs[index];
@@ -47,6 +48,7 @@ export function estimateCameraTrajectory(framePairs, {
       componentId += 1;
       cumulativeR = identity();
       cumulativeT = [0,0,0];
+      componentOriginPending = true;
       continue;
     }
     const R=estimate.pose.rotation;
@@ -58,7 +60,22 @@ export function estimateCameraTrajectory(framePairs, {
       componentId += 1;
       cumulativeR = identity();
       cumulativeT = [0,0,0];
+      componentOriginPending = true;
       continue;
+    }
+    if (componentOriginPending) {
+      // The first usable pair after a failed transform starts a new local
+      // coordinate component at its from-frame. Record that camera pose so
+      // pair-local points from this segment can be transformed and fused.
+      poses.push({
+        frame: pair.fromFrame ?? index,
+        rotation: identity(),
+        translation: [0,0,0],
+        status: "estimated",
+        componentId,
+        componentOrigin: true
+      });
+      componentOriginPending = false;
     }
     cumulativeT=add(apply(R,cumulativeT),t);
     cumulativeR=multiply(R,cumulativeR);
