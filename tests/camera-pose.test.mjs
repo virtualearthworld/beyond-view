@@ -34,5 +34,10 @@ assert.equal(chosen.status,"pose-selected");
 assert.notEqual(chosen.selectedIndex,null);
 assert.ok(chosen.candidates[0].positiveDepthRatio>0.9,"best candidate should put almost all synthetic points in front of both cameras");
 assert.equal(selectCameraPose(out.candidates,points.slice(0,3),K).status,"insufficient-correspondences");
+const nonOrthonormal=out.candidates.map((candidate,index)=>index===0?{...candidate,rotation:[[2,0,0],[0,1,0],[0,0,1]]}:candidate);
+assert.throws(()=>selectCameraPose(nonOrthonormal,points,K),/orthonormal rotation/i);
+const nonUnitTranslation=out.candidates.map((candidate,index)=>index===0?{...candidate,translationDirection:[2,0,0]}:candidate);
+assert.throws(()=>selectCameraPose(nonUnitTranslation,points,K),/unit translation direction/i);
+
 
 console.log("Camera-pose candidate and cheirality regression tests passed.");
