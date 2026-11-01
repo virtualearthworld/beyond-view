@@ -120,11 +120,12 @@ function triangulateNormalized(R,t,p1,p2) {
  * points are {from:{x,y},to:{x,y}} pixel correspondences. The candidate pose
  * convention is X2 = R*X1 + t; K1/K2 are the same intrinsics used for recovery.
  */
-export function selectCameraPose(candidates,points,K1,K2=K1,{minimumPoints=8,minimumPositiveDepthRatio=0.6}={}) {
+export function selectCameraPose(candidates,points,K1,K2=K1,{minimumPoints=8,minimumPositiveDepthRatio=0.6,maximumMedianReprojectionErrorPixels=4}={}) {
   if(!Array.isArray(candidates)||candidates.length!==4||
      !Array.isArray(points)||!finiteMatrix(K1)||!finiteMatrix(K2)||
      !Number.isInteger(minimumPoints)||minimumPoints<1||
-     !Number.isFinite(minimumPositiveDepthRatio)||minimumPositiveDepthRatio<=0||minimumPositiveDepthRatio>1)
+     !Number.isFinite(minimumPositiveDepthRatio)||minimumPositiveDepthRatio<=0||minimumPositiveDepthRatio>1||
+     !Number.isFinite(maximumMedianReprojectionErrorPixels)||maximumMedianReprojectionErrorPixels<=0)
     throw new TypeError("Expected four pose candidates, image correspondences, valid intrinsics, and valid selection options.");
   const valid=points.filter(p=>Number.isFinite(p?.from?.x)&&Number.isFinite(p?.from?.y)&&Number.isFinite(p?.to?.x)&&Number.isFinite(p?.to?.y));
   if(valid.length<minimumPoints)return {status:"insufficient-correspondences",totalPoints:valid.length,selectedIndex:null,candidates:[]};
@@ -139,20 +140,34 @@ export function selectCameraPose(candidates,points,K1,K2=K1,{minimumPoints=8,min
     const translationNorm=norm(candidate.translationDirection);
     if(orthogonalityError>1e-3||Math.abs(rotationDeterminant-1)>1e-3||Math.abs(translationNorm-1)>1e-3)
       throw new TypeError("Pose candidate must contain a proper orthonormal rotation and a unit translation direction.");
-    let validDepth=0,attempted=0;
+    let validDepth=0,attempted=0;const reprojectionErrors=[];
     for(const point of valid){
       const p1=normalized(iK1,point.from),p2=normalized(iK2,point.to);if(!p1||!p2)continue;
       const X=triangulateNormalized(candidate.rotation,candidate.translationDirection,p1,p2);if(!X)continue;
       attempted++;
       const X2=mv(candidate.rotation,X).map((v,i)=>v+candidate.translationDirection[i]);
-      if(X[2]>1e-8&&X2[2]>1e-8)validDepth++;
+      if(X[2]>1e-8&&X2[2]>1e-8){
+        validDepth++;
+        const q1=mv(K1,X),q2=mv(K2,X2);
+        if(Math.abs(q1[2])>1e-12&&Math.abs(q2[2])>1e-12){
+          const e1=Math.hypot(q1[0]/q1[2]-point.from.x,q1[1]/q1[2]-point.from.y);
+          const e2=Math.hypot(q2[0]/q2[2]-point.to.x,q2[1]/q2[2]-point.to.y);
+          reprojectionErrors.push((e1+e2)/2);
+        }
+      }
     }
+    reprojectionErrors.sort((a,b)=>a-b);
+    const medianReprojectionErrorPixels=reprojectionErrors.length?
+      reprojectionErrors[Math.floor(reprojectionErrors.length/2)]:Infinity;
     return {index,positiveDepthCount:validDepth,triangulatedCount:attempted,
-      positiveDepthRatio:attempted?validDepth/attempted:0};
-  }).sort((a,b)=>b.positiveDepthCount-a.positiveDepthCount||b.positiveDepthRatio-a.positiveDepthRatio);
+      positiveDepthRatio:attempted?validDepth/attempted:0,
+      medianReprojectionErrorPixels,reprojectionCount:reprojectionErrors.length};
+  }).sort((a,b)=>b.positiveDepthCount-a.positiveDepthCount||b.positiveDepthRatio-a.positiveDepthRatio||a.medianReprojectionErrorPixels-b.medianReprojectionErrorPixels);
   const best=scores[0],ratio=best?.positiveDepthRatio??0;
-  return {status:best&&best.triangulatedCount>=minimumPoints&&ratio>=minimumPositiveDepthRatio?"pose-selected":"ambiguous-pose",
-    selectedIndex:best&&best.triangulatedCount>=minimumPoints&&ratio>=minimumPositiveDepthRatio?best.index:null,
-    totalPoints:valid.length,minimumPositiveDepthRatio,candidates:scores,
+  const reprojectionAccepted=best&&best.medianReprojectionErrorPixels<=maximumMedianReprojectionErrorPixels;
+  const accepted=best&&best.triangulatedCount>=minimumPoints&&ratio>=minimumPositiveDepthRatio&&reprojectionAccepted;
+  return {status:accepted?"pose-selected":"ambiguous-pose",
+    selectedIndex:accepted?best.index:null,
+    totalPoints:valid.length,minimumPositiveDepthRatio,maximumMedianReprojectionErrorPixels,candidates:scores,
     limitation:"This selects a relative pose only when enough matched points triangulate with positive depth in both cameras. It does not recover absolute scale or validate the real-video pipeline by itself."};
 }
