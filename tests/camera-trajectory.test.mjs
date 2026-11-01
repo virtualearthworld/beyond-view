@@ -24,6 +24,12 @@ assert.equal(trajectory.scaleKnown,false);
 assert.ok(["trajectory-estimated","partial-trajectory","trajectory-unavailable"].includes(trajectory.status));
 assert.equal(trajectory.segments[2].status,"insufficient-epipolar-support");
 assert.equal(trajectory.poses[3].status,"gap","failed segment must be explicit, not silently interpolated");
+const restartedOrigin=trajectory.poses.find(p=>p.frame===3&&p.status==="estimated");
+assert.ok(restartedOrigin,"the first usable segment after a gap needs an estimated from-frame origin pose");
+assert.equal(restartedOrigin.componentId,trajectory.segments[3].componentId);
+assert.equal(restartedOrigin.componentOrigin,true);
+assert.deepEqual(restartedOrigin.rotation,[[1,0,0],[0,1,0],[0,0,1]]);
+assert.deepEqual(restartedOrigin.translation,[0,0,0]);
 assert.notEqual(trajectory.segments[1].componentId, trajectory.segments[3].componentId,
   "a successful pose after a gap must start a separate coordinate component");
 assert.equal(trajectory.poses[4].componentId, trajectory.segments[3].componentId,
