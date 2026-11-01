@@ -41,3 +41,12 @@ assert.match(html, /id="background-tracks"/);
 assert.match(html, /id="residual-tracks"/);
 assert.match(html, /possible moving-subject, parallax, occlusion/);
 console.log("background and residual motion diagnostics integration test passed");
+
+assert.match(html, /id="cloud-reset"/);
+assert.match(html, /pointerdown/);
+assert.match(html, /pointermove/);
+assert.match(html, /addEventListener\("wheel"/);
+assert.match(html, /cloudYaw/);
+assert.match(html, /cloudZoom/);
+assert.match(html, /Shift-drag to pan/);
+console.log("interactive sparse cloud controls integration test passed");
