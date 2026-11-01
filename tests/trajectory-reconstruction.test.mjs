@@ -40,4 +40,20 @@ assert.equal(result.segments[1].status,"pose-unavailable");
 assert.equal(result.segments[1].pointCount,0,"failed camera poses must not fabricate points");
 assert.equal(result.fusedWorldModel,false);
 assert.equal(result.scaleKnown,false);
+
+const withInvalidTrack = reconstructSparseTrajectory(
+  [{fromFrame:0,toFrame:1,tracks:[...tracks,{from:{x:NaN,y:2},to:{x:3,y:4}}]}],
+  {segments:[{status:"estimated",pose:{rotation:R,translationDirection:t}}]}, K,
+  {maxReprojectionError:1,minimumPoints:8}
+);
+assert.equal(withInvalidTrack.segments[0].diagnostics.invalidTracks,1);
+assert.equal(withInvalidTrack.segments[0].diagnostics.inputTracks,tracks.length+1);
+
+const malformedPose = reconstructSparseTrajectory(
+  [{fromFrame:0,toFrame:1,tracks}],
+  {segments:[{status:"estimated",pose:{rotation:[[1,0],[0,1]],translationDirection:t}}]}, K
+);
+assert.equal(malformedPose.segments[0].status,"pose-unavailable");
+assert.equal(malformedPose.segments[0].pointCount,0);
+
 console.log("trajectory sparse reconstruction tests passed");
