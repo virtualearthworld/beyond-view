@@ -57,6 +57,22 @@ const correctMotion = measuredTracks.filter(t =>
 assert.ok(correctMotion.length / measuredTracks.length >= 0.7,
   "most accepted tracks should recover the known +4,+2 pixel translation");
 
+// Candidate uniqueness compares separate image locations, not adjacent samples
+// around the same local minimum.
+const distinctCandidateTracks = trackFeatures(frame, movedFrame, features, {
+  searchRadius: 8, patchRadius: 2, maxMeanError: 3,
+  uniqueness: 0.9, uniquenessRadius: 5
+});
+assert.ok(distinctCandidateTracks.length >= 5,
+  "nearby samples around one match must not suppress valid tracks");
+assert.ok(distinctCandidateTracks.every(t =>
+  t.to.x - t.from.x === 4 && t.to.y - t.from.y === 2
+), "distinct-candidate matching must preserve the known translation");
+assert.throws(
+  () => trackFeatures(frame, movedFrame, features, { uniquenessRadius: -1 }),
+  /uniquenessRadius/
+);
+
 const frameB = texturedFrame(96, 72);
 const tracks = [
   { from: { x: 10, y: 12 }, to: { x: 15, y: 14 }, patchError: 0, parallaxPixels: Math.sqrt(29) },
