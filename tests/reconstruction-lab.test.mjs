@@ -28,3 +28,10 @@ assert.match(html, /analysisFocalLength=focalLength\*sampled\[0\]\.width\/video\
 assert.match(html, /not verified calibration/);
 assert.doesNotMatch(html, /textContent=String\(features\.length\)/);
 console.log("reconstruction lab multi-frame report integration test passed");
+
+assert.match(html, /fuseSparsePointClouds/);
+assert.match(html, /fusion-components/);
+assert.match(html, /fused-points/);
+assert.match(html, /fusion-observations/);
+assert.match(html, /fusion-rejected/);
+assert.match(html, /connected camera components/);
