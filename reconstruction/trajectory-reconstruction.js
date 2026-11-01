@@ -3,6 +3,10 @@ import { triangulatePoint, projectPoint } from "./multiview-geometry.js";
 const validK = K => Array.isArray(K) && K.length === 3 &&
   K.every(row => Array.isArray(row) && row.length === 3 && row.every(Number.isFinite));
 
+
+const validPose = pose => pose && Array.isArray(pose.rotation) && pose.rotation.length === 3 && pose.rotation.every(row => Array.isArray(row) && row.length === 3 && row.every(Number.isFinite)) && Array.isArray(pose.translationDirection) && pose.translationDirection.length === 3 && pose.translationDirection.every(Number.isFinite);
+const validTrack = track => track && track.from && track.to && Number.isFinite(track.from.x) && Number.isFinite(track.from.y) && Number.isFinite(track.to.x) && Number.isFinite(track.to.y);
+
 function projectionMatrix(K, R, t) {
   const Rt = R.map((row, i) => [...row, t[i]]);
   const P = [];
@@ -43,7 +47,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
     if (!pair || !Array.isArray(pair.tracks)) {
       throw new TypeError("Each frame pair must include a tracks array.");
     }
-    if (poseSegment?.status !== "estimated" || !poseSegment.pose) {
+    if (poseSegment?.status !== "estimated" || !validPose(poseSegment.pose)) {
       return {
         index,
         fromFrame: pair.fromFrame ?? index,
@@ -52,7 +56,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
         points: [],
         pointCount: 0,
         medianReprojectionError: null,
-        diagnostics: { inputTracks: pair.tracks.length, triangulationFailures: 0, negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, accepted: 0 }
+        diagnostics: { inputTracks: pair.tracks.length, invalidTracks: 0, triangulationFailures: 0, negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, accepted: 0 }
       };
     }
     const pose = poseSegment.pose;
@@ -62,6 +66,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
       negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, accepted: 0 };
     const cameraDepth = (P, point) => P[8] * point[0] + P[9] * point[1] + P[10] * point[2] + P[11];
     for (const track of pair.tracks) {
+      if (!validTrack(track)) { diagnostics.invalidTracks++; continue; }
       const point = triangulatePoint(P1, P2, [track.from.x, track.from.y], [track.to.x, track.to.y]);
       if (!point) { diagnostics.triangulationFailures++; continue; }
       const depth1 = cameraDepth(P1, point), depth2 = cameraDepth(P2, point);
