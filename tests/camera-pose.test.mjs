@@ -32,6 +32,11 @@ for(let i=0;i<30;i++){
 const chosen=selectCameraPose(out.candidates,points,K);
 assert.equal(chosen.status,"pose-selected");
 assert.notEqual(chosen.selectedIndex,null);
+assert.ok(chosen.candidates[0].medianReprojectionErrorPixels<1e-3,"correct pose should reproject noiseless synthetic points accurately");
+const strictReprojection=selectCameraPose(out.candidates,points,K,K,{maximumMedianReprojectionErrorPixels:1e-12});
+assert.equal(strictReprojection.status,"ambiguous-pose","pose should be withheld when reprojection threshold is not met");
+assert.equal(strictReprojection.selectedIndex,null);
+
 assert.ok(chosen.candidates[0].positiveDepthRatio>0.9,"best candidate should put almost all synthetic points in front of both cameras");
 assert.equal(selectCameraPose(out.candidates,points.slice(0,3),K).status,"insufficient-correspondences");
 const nonOrthonormal=out.candidates.map((candidate,index)=>index===0?{...candidate,rotation:[[2,0,0],[0,1,0],[0,0,1]]}:candidate);
