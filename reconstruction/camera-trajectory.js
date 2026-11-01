@@ -80,7 +80,7 @@ export function estimateCameraTrajectory(framePairs, {
     cumulativeT=add(apply(R,cumulativeT),t);
     cumulativeR=multiply(R,cumulativeR);
     const segment={index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
-      status:"estimated",componentId,pose:{rotation:R,translationDirection:t},diagnostics:estimate.epipolar};
+      status:"estimated",componentId,pose:{rotation:R,translationDirection:t},diagnostics:{...estimate.epipolar,poseQuality:estimate.candidateScores?.find(score=>score.index===estimate.selectedCandidateIndex)??null}};
     segments.push(segment);
     poses.push({frame:pair.toFrame ?? index+1,rotation:cumulativeR.map(r=>r.slice()),translation:cumulativeT.slice(),status:"estimated",componentId,componentOrigin:index>0 && segments[index-1].status!=="estimated"});
   }
