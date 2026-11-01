@@ -24,6 +24,17 @@ assert.equal(result.segmentCount,2);
 assert.equal(result.segments[0].status,"sparse-points-estimated");
 assert.ok(result.segments[0].pointCount>=30,"known synthetic scene should triangulate a useful point set");
 assert.ok(result.segments[0].medianReprojectionError<0.01,"synthetic point reprojection error should be very small");
+assert.equal(result.segments[0].diagnostics.inputTracks, tracks.length);
+assert.equal(result.segments[0].diagnostics.accepted, result.segments[0].pointCount);
+assert.equal(
+  result.segments[0].diagnostics.accepted +
+  result.segments[0].diagnostics.triangulationFailures +
+  result.segments[0].diagnostics.negativeDepth +
+  result.segments[0].diagnostics.projectionFailures +
+  result.segments[0].diagnostics.reprojectionRejected,
+  tracks.length,
+  "every input match must have exactly one reported triangulation outcome"
+);
 assert.equal(result.segments[0].coordinateFrame,"local-to-from-frame");
 assert.equal(result.segments[1].status,"pose-unavailable");
 assert.equal(result.segments[1].pointCount,0,"failed camera poses must not fabricate points");
