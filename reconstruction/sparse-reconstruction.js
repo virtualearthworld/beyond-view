@@ -344,3 +344,37 @@ export function linkTrackSequencesByComponent(pairwiseTracks, pairComponentIds, 
   }
   return output;
 }
+
+
+/**
+ * Partition measured tracks by agreement with a dominant image homography.
+ * Homography inliers are background-motion-consistent; residual tracks are
+ * retained as independent-motion/parallax candidates, NOT labelled as people.
+ * A failed/weak model leaves all tracks unclassified rather than discarding them.
+ */
+export function classifyTrackMotionAgainstBackground(tracks, homographyResult, {
+  minimumInliers = 8,
+  minimumCoverage = 0.12
+} = {}) {
+  if (!Array.isArray(tracks) || !Number.isInteger(minimumInliers) || minimumInliers < 4 ||
+      !Number.isFinite(minimumCoverage) || minimumCoverage < 0 || minimumCoverage > 1) {
+    throw new TypeError("Invalid background-motion classification options.");
+  }
+  const valid = tracks.filter(t => t?.from && t?.to &&
+    [t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite));
+  const inliers = Array.isArray(homographyResult?.inliers) ? homographyResult.inliers : [];
+  const coverage = homographyResult?.coverage;
+  const enoughSpread = coverage && Number.isFinite(coverage.spanX) && Number.isFinite(coverage.spanY)
+    ? Math.min(coverage.spanX, coverage.spanY) >= minimumCoverage * Math.max(1,
+      Math.max(...valid.map(t => t.from.x), 0), Math.max(...valid.map(t => t.from.y), 0))
+    : false;
+  if (inliers.length < minimumInliers || !homographyResult?.H || !enoughSpread) {
+    return { status: "insufficient-background-model", backgroundConsistent: [], residualCandidates: [], unclassified: valid,
+      limitation: "A reliable, spatially distributed background-motion model was not available; all measured tracks are retained." };
+  }
+  const keys = new Set(inliers.map(t => [t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  const backgroundConsistent = valid.filter(t => keys.has([t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  const residualCandidates = valid.filter(t => !keys.has([t.from.x,t.from.y,t.to.x,t.to.y].join(",")));
+  return { status: "background-model-supported", backgroundConsistent, residualCandidates, unclassified: [],
+    limitation: "Residual tracks may represent moving subjects, parallax, occlusion, or matching errors; they are retained and are not semantic object detections." };
+}
