@@ -129,3 +129,24 @@ assert.throws(
   /one non-negative component ID/
 );
 console.log("component-aware trajectory linking tests passed");
+
+const { classifyTrackMotionAgainstBackground } = await import("../reconstruction/sparse-reconstruction.js");
+const backgroundTracks = Array.from({length:10},(_,i)=>({
+  from:{x:20+i*35,y:20+(i%3)*45}, to:{x:24+i*35,y:22+(i%3)*45}
+}));
+const movingCandidate = {from:{x:180,y:180},to:{x:245,y:95}};
+const modelTracks = [...backgroundTracks,movingCandidate];
+const classified = classifyTrackMotionAgainstBackground(modelTracks,{
+  H:[1,0,4,0,1,2,0,0,1],
+  inliers:backgroundTracks,
+  coverage:{spanX:315,spanY:90}
+});
+assert.equal(classified.status,"background-model-supported");
+assert.equal(classified.backgroundConsistent.length,10);
+assert.deepEqual(classified.residualCandidates,[movingCandidate]);
+assert.equal(classified.unclassified.length,0);
+const weakClassification = classifyTrackMotionAgainstBackground(modelTracks,{H:null,inliers:[]});
+assert.equal(weakClassification.unclassified.length,11,
+  "weak model must retain all tracks rather than discard possible moving subjects");
+assert.equal(weakClassification.residualCandidates.length,0);
+console.log("conservative background-motion classification tests passed");
