@@ -1,4 +1,4 @@
-import { triangulateTracks } from "./multiview-geometry.js";
+import { triangulatePoint, projectPoint } from "./multiview-geometry.js";
 
 const validK = K => Array.isArray(K) && K.length === 3 &&
   K.every(row => Array.isArray(row) && row.length === 3 && row.every(Number.isFinite));
@@ -51,15 +51,30 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
         status: "pose-unavailable",
         points: [],
         pointCount: 0,
-        medianReprojectionError: null
+        medianReprojectionError: null,
+        diagnostics: { inputTracks: pair.tracks.length, triangulationFailures: 0, negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, accepted: 0 }
       };
     }
     const pose = poseSegment.pose;
     const P2 = projectionMatrix(K, pose.rotation, pose.translationDirection);
-    const points = triangulateTracks(P1, P2, pair.tracks, {
-      maxReprojectionError,
-      requirePositiveDepth: true
-    });
+    const points = [];
+    const diagnostics = { inputTracks: pair.tracks.length, triangulationFailures: 0,
+      negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, accepted: 0 };
+    const cameraDepth = (P, point) => P[8] * point[0] + P[9] * point[1] + P[10] * point[2] + P[11];
+    for (const track of pair.tracks) {
+      const point = triangulatePoint(P1, P2, [track.from.x, track.from.y], [track.to.x, track.to.y]);
+      if (!point) { diagnostics.triangulationFailures++; continue; }
+      const depth1 = cameraDepth(P1, point), depth2 = cameraDepth(P2, point);
+      if (depth1 <= 1e-10 || depth2 <= 1e-10) { diagnostics.negativeDepth++; continue; }
+      const p1 = projectPoint(P1, point), p2 = projectPoint(P2, point);
+      if (!p1 || !p2) { diagnostics.projectionFailures++; continue; }
+      const error1 = Math.hypot(p1[0] - track.from.x, p1[1] - track.from.y);
+      const error2 = Math.hypot(p2[0] - track.to.x, p2[1] - track.to.y);
+      const reprojectionError = (error1 + error2) / 2;
+      if (reprojectionError > maxReprojectionError) { diagnostics.reprojectionRejected++; continue; }
+      points.push({ position: point, reprojectionError, observations: 2, depth1, depth2 });
+      diagnostics.accepted++;
+    }
     const errors = points.map(point => point.reprojectionError).sort((a,b)=>a-b);
     const medianReprojectionError = errors.length
       ? errors[Math.floor(errors.length / 2)] : null;
@@ -71,6 +86,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
       points,
       pointCount: points.length,
       medianReprojectionError,
+      diagnostics,
       coordinateFrame: "local-to-from-frame",
       scaleKnown: false
     };
