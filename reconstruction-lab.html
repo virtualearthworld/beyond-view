@@ -78,7 +78,8 @@ small{color:var(--muted)}a{color:var(--accent)}
 </section>
 </main>
 <script type="module">
-import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences, linkTrackSequencesByComponent, classifyTrackMotionAgainstBackground } from "./reconstruction/sparse-reconstruction.js";
+import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences, linkTrackSequencesByComponent } from "./reconstruction/sparse-reconstruction.js";
+import { classifyMotionLayers } from "./reconstruction/motion-separation.js";
 import { estimateHomographyRansac } from "./reconstruction/multiview-geometry.js";
 import { estimateCameraTrajectory } from "./reconstruction/camera-trajectory.js";
 import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconstruction.js";
@@ -198,9 +199,9 @@ run.addEventListener("click",async()=>{
     document.querySelector("#dominant-motion").textContent=motion.dx===null?"Not enough":motion.dx.toFixed(1)+", "+motion.dy.toFixed(1)+" px";
     document.querySelector("#motion-support").textContent=motion.inliers.length+" / "+summary.matchedFeatures+" ("+(motion.inlierRatio*100).toFixed(0)+"%)";
     document.querySelector("#perspective-support").textContent=perspective.inliers.length+" / "+summary.matchedFeatures+" ("+(perspective.inlierRatio*100).toFixed(0)+"%)";
-     const motionClasses=classifyTrackMotionAgainstBackground(summary.tracks,perspective);
-     document.querySelector("#background-tracks").textContent=String(motionClasses.backgroundConsistent.length);
-     document.querySelector("#residual-tracks").textContent=String(motionClasses.residualCandidates.length+(motionClasses.unclassified.length));
+     const motionClasses=classifyMotionLayers(summary.tracks,perspective,{width:first.width,height:first.height});
+     document.querySelector("#background-tracks").textContent=String(motionClasses.backgroundConsistent.length)+" / "+motionClasses.measurements.occupiedCells+" cells";
+     document.querySelector("#residual-tracks").textContent=String(motionClasses.independentMotionCandidates.length+motionClasses.ambiguous.length);
     document.querySelector("#perspective-error").textContent=perspective.medianReprojectionErrorPixels===null?"—":perspective.medianReprojectionErrorPixels.toFixed(2)+" px";
     document.querySelector("#perspective-coverage").textContent=Math.round(perspective.coverage.spanX)+" × "+Math.round(perspective.coverage.spanY)+" px";
     document.querySelector("#trajectories").textContent=third?String(trajectories.length):"Need 3 frames";
@@ -232,7 +233,7 @@ run.addEventListener("click",async()=>{
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+". Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible, Residual tracks are retained as possible moving-subject, parallax, occlusion, or matching-error observations; they are not semantic person detections. This is not yet a globally aligned or metric 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+". Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible, Motion-layer classification: "+motionClasses.status+"; "+motionClasses.limitation+". This is not yet a globally aligned or metric 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
