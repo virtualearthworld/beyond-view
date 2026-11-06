@@ -115,6 +115,11 @@ export function regularizeCameraTrajectory(trajectory, persistentTracks = [], {
       maxDisplacement=Math.max(maxDisplacement,delta);
       totalDisplacement+=delta;
     });
+    const optimized=indices.map(i=>poses[i].translation);
+    for(let j=1;j<optimized.length-1;j++){
+      const smooth=optimized[j-1].map((v,k)=>optimized[j+1][k]-2*optimized[j][k]+v);
+      optimizedSecondDifferenceSum += smooth.reduce((sum,v)=>sum+v*v,0);
+    }
   }
   return {
     ...trajectory,
