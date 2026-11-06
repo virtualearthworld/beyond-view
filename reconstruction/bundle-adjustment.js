@@ -33,8 +33,20 @@ function refine3(initial, observations, projectAt) {
     }
     for(let d=0;d<3;d++)H[d][d]+=1e-5;
     const delta=solve3(H,g.map(v=>-v));if(!delta)break;
-    const next=x.map((v,i)=>v+delta[i]);if(!finite3(next))break;x=next;
-    if(Math.hypot(...delta)<1e-5)break;
+    // Backtracking prevents a numerically unstable Gauss-Newton step from
+    // increasing this variable block's robust reprojection objective.
+    const objective=point=>observations.reduce((sum,obs)=>{
+      const r=projectAt(point,obs);if(!r)return sum;
+      const e=Math.hypot(...r);return sum+(e<=3?e*e:6*e-9);
+    },0);
+    const before=objective(x);let accepted=null,scale=1;
+    for(let attempt=0;attempt<8;attempt++,scale*=0.5){
+      const candidate=x.map((v,i)=>v+scale*delta[i]);
+      if(finite3(candidate)&&objective(candidate)<=before+1e-9){accepted=candidate;break;}
+    }
+    if(!accepted)break;
+    x=accepted;
+    if(Math.hypot(...delta)*scale<1e-5)break;
   }
   return x;
 }
