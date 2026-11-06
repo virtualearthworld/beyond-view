@@ -79,7 +79,7 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
     map=poseMap();
     for(const l of landmarks){
       const obs=l.views.map(v=>({x:v.o.x,y:v.o.y}));
-      const mats=l.views.map(v=>projection(K,v.p.rotation,v.p.translation));
+      const mats=l.views.map(v=>{const current=map.get(l.track.componentId+":"+(l.track.fromPairIndex+l.views.indexOf(v)));return projection(K,current.rotation,current.translation);});
       l.point=refine3(l.point,obs,(X,o)=>{const index=obs.indexOf(o);const q=projectPoint(mats[index],X);return q?[q[0]-o.x,q[1]-o.y]:null;});
     }
     // Optimize each non-anchor translation from its observed landmarks.
