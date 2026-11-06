@@ -16,7 +16,7 @@ const trajectory = {
 };
 
 test("regularizes translation inside a connected component and anchors endpoints",()=>{
-  const tracks=[{componentId:0,fromPairIndex:0,toPairIndex:1,observations:[{x:10,y:10},{x:11,y:10},{x:12,y:10}]}];
+  const tracks=Array.from({length:3},(_,i)=>({componentId:0,fromPairIndex:0,toPairIndex:1,observations:[{x:10+i,y:10},{x:11+i,y:10},{x:12+i,y:10}]}));
   const result=regularizeCameraTrajectory(trajectory,tracks,{lambda:1});
   assert.deepEqual(result.poses[0].translation,[0,0,0]);
   assert.deepEqual(result.poses[2].translation,[2,0,0]);
