@@ -50,8 +50,8 @@ export function evaluateMultiViewReprojection(tracks, trajectory, K, {
     });
   }
 
-  const errors = [];
-  let evaluatedLandmarks = 0, skippedTracks = 0, evaluatedObservations = 0;
+  const errors = [], heldOutErrors = [];
+  let evaluatedLandmarks = 0, skippedTracks = 0, evaluatedObservations = 0, heldOutObservations = 0;
   for (const track of tracks.slice(0,maxTracks)) {
     if (!track || !Number.isInteger(track.componentId) ||
         !Number.isInteger(track.fromPairIndex) || !Array.isArray(track.observations) ||
@@ -71,24 +71,29 @@ export function evaluateMultiViewReprojection(tracks, trajectory, K, {
       [last.observation.x,last.observation.y]
     );
     if (!point) { skippedTracks++; continue; }
-    const pointErrors = [];
-    for (const view of views) {
+    const pointErrors = [], trackHeldOutErrors = [];
+    for (let viewIndex=0; viewIndex<views.length; viewIndex++) {
+      const view=views[viewIndex];
       const projected = projectPoint(view.pose.projection,point);
       if (!projected) continue;
-      pointErrors.push(Math.hypot(
-        projected[0]-view.observation.x,
-        projected[1]-view.observation.y
-      ));
+      const error=Math.hypot(projected[0]-view.observation.x,projected[1]-view.observation.y);
+      pointErrors.push(error);
+      // First and last views construct the landmark; interior views are held out.
+      if (viewIndex>0 && viewIndex<views.length-1) trackHeldOutErrors.push(error);
     }
     if (pointErrors.length !== views.length || !pointErrors.every(Number.isFinite)) {
       skippedTracks++; continue;
     }
     errors.push(...pointErrors);
+    heldOutErrors.push(...trackHeldOutErrors);
     evaluatedLandmarks++;
     evaluatedObservations += pointErrors.length;
+    heldOutObservations += trackHeldOutErrors.length;
   }
   const sortedErrors=errors.slice().sort((a,b)=>a-b);
   const percentile95=sortedErrors.length ? sortedErrors[Math.min(sortedErrors.length-1,Math.ceil(sortedErrors.length*0.95)-1)] : null;
+  const sortedHeldOut=heldOutErrors.slice().sort((a,b)=>a-b);
+  const heldOutP95=sortedHeldOut.length ? sortedHeldOut[Math.min(sortedHeldOut.length-1,Math.ceil(sortedHeldOut.length*0.95)-1)] : null;
   return {
     status: evaluatedLandmarks ? "multi-view-reprojection-evaluated" : "insufficient-multi-view-tracks",
     path,
@@ -98,6 +103,10 @@ export function evaluateMultiViewReprojection(tracks, trajectory, K, {
     medianReprojectionErrorPixels: median(errors),
     meanReprojectionErrorPixels: errors.length ? errors.reduce((a,b)=>a+b,0)/errors.length : null,
     p95ReprojectionErrorPixels: percentile95,
+    heldOutObservations,
+    heldOutMedianReprojectionErrorPixels: median(heldOutErrors),
+    heldOutP95ReprojectionErrorPixels: heldOutP95,
+    heldOutPolicy: "Interior observations are excluded from first/last-view triangulation and reported separately; tracks with fewer than three observations have no held-out views.",
     calibrationAssumed: true,
     metricScaleKnown: false,
     limitation: "This is a track-based diagnostic using the supplied camera path and assumed intrinsics. It is not bundle adjustment or independent ground-truth accuracy; first/last-view triangulation and all-view reprojection use the same observations."
