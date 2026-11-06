@@ -87,6 +87,8 @@ export function evaluateMultiViewReprojection(tracks, trajectory, K, {
     evaluatedLandmarks++;
     evaluatedObservations += pointErrors.length;
   }
+  const sortedErrors=errors.slice().sort((a,b)=>a-b);
+  const percentile95=sortedErrors.length ? sortedErrors[Math.min(sortedErrors.length-1,Math.ceil(sortedErrors.length*0.95)-1)] : null;
   return {
     status: evaluatedLandmarks ? "multi-view-reprojection-evaluated" : "insufficient-multi-view-tracks",
     path,
