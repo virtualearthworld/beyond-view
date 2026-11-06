@@ -62,6 +62,12 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Features</th><th>Matches</th><th>2D motion support</th><th>Perspective support</th><th>3D accepted / input</th><th>3D rejection reasons</th><th>Median fit error</th><th>Pose reprojection / positive depth</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="10">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
+<h2>Camera calibration sensitivity</h2>
+<p>This repeats relative-pose estimation over five provisional focal-length assumptions. It does not select a focal length or claim calibration; it shows whether pose recovery is fragile when the assumed focal length changes. Inlier counts are correspondence support, not pose-accuracy scores.</p>
+<div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Focal assumption</th><th>Analysis focal length</th><th>Pairs with relative pose</th><th>Median epipolar inliers</th><th>Interpretation</th></tr></thead><tbody id="calibration-sensitivity-results"><tr><td colspan="5">Analyze a video to compare calibration assumptions.</td></tr></tbody></table></div>
+<small id="calibration-sensitivity-note">No calibration is inferred automatically. A verified focal length and distortion model are still required before treating the camera path as reliable.</small>
+</section>
+<section class="panel">
 <h2>First sparse 3D point-cloud preview</h2>
 <p>This diagnostic view renders accepted points from the first frame pair that has enough valid 3D points. It is an exploratory projection of a pair-local cloud, not a fused or textured environment; orientation and scale are provisional.</p>
 <div class="actions" aria-label="3D point-cloud view controls"><button id="cloud-reset" type="button">Reset view</button><small>Drag to rotate · Scroll to zoom · Shift-drag to pan</small></div>
@@ -86,6 +92,7 @@ import { estimateCameraTrajectory } from "./reconstruction/camera-trajectory.js"
 import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconstruction.js";
 import { fuseSparsePointClouds } from "./reconstruction/point-cloud-fusion.js";
 import { projectSparseCloud } from "./reconstruction/sparse-cloud-view.js";
+import { analyzeCalibrationSensitivity } from "./reconstruction/calibration-sensitivity.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -180,6 +187,12 @@ run.addEventListener("click",async()=>{
     const analysisFocalLength=focalLength*sampled[0].width/video.videoWidth;
     const K=[[analysisFocalLength,0,sampled[0].width/2],[0,analysisFocalLength,sampled[0].height/2],[0,0,1]];
     const framePairs=pairTracks.map((tracks,i)=>({fromFrame:i,toFrame:i+1,tracks}));
+    const calibrationSensitivity=analyzeCalibrationSensitivity(framePairs,{
+      width:sampled[0].width,
+      height:sampled[0].height,
+      focalMultipliers:[0.8,1,1.2,1.4,1.6],
+      estimateTrajectory:(pairs,candidateK)=>estimateCameraTrajectory(pairs,{K:candidateK,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6})
+    });
     const trajectory=estimateCameraTrajectory(framePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
     const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
     const fusion=fuseSparsePointClouds(sparse,trajectory);
@@ -220,6 +233,11 @@ run.addEventListener("click",async()=>{
     document.querySelector("#pair-count").textContent=String(pairReports.length);
     document.querySelector("#pair-strong").textContent=String(strong);
     document.querySelector("#pair-weak").textContent=String(pairReports.length-strong);
+    document.querySelector("#calibration-sensitivity-results").innerHTML=calibrationSensitivity.map(result=>{
+      const stable=result.recoveredPairs===result.pairCount;
+      return "<tr><td>"+result.multiplier.toFixed(1)+" × image width</td><td>"+result.focalLengthPixels.toFixed(1)+" px</td><td>"+result.recoveredPairs+" / "+result.pairCount+"</td><td>"+(result.medianEpipolarInliers===null?"—":result.medianEpipolarInliers.toFixed(1))+"</td><td class=\"status-chip "+(stable?"good-text":"weak-text")+"\">"+(stable?"Pose recovered on all pairs":"Some pose gaps")+"</td></tr>";
+    }).join("");
+    document.querySelector("#calibration-sensitivity-note").textContent="Five provisional assumptions tested independently. This is a sensitivity check only: no focal length is selected, no absolute scale is recovered, and successful relative-pose recovery does not validate pose accuracy.";
     document.querySelector("#pose-segments").textContent=trajectory.estimatedSegmentCount+" / "+trajectory.segmentCount;
     document.querySelector("#trajectory-status").textContent=trajectory.status;
     document.querySelector("#sparse-points").textContent=String(sparse.pointCount);
@@ -242,7 +260,7 @@ run.addEventListener("click",async()=>{
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+". Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Motion-layer separation found "+supportedLayerPairs.length+" of "+pairReports.length+" frame pairs with sufficient background support; residual candidates are not semantic person/water detections. This is not yet a globally aligned or metric 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). A five-assumption calibration sweep recovered poses on "+calibrationSensitivity.map(result=>result.recoveredPairs).join(", ")+ " of "+pairReports.length+" pairs respectively. Calibration remains unverified. Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Motion-layer separation found "+supportedLayerPairs.length+" of "+pairReports.length+" frame pairs with sufficient background support; residual candidates are not semantic person/water detections. This is not yet a globally aligned or metric 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
