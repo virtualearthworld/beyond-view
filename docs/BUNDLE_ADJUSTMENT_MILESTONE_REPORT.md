@@ -25,10 +25,16 @@ The uploaded MOV was successfully opened for independent feature inspection:
 
 A fresh ORB/RANSAC sample used 39 frames at 0.5-second spacing, producing 38 adjacent pairs. Median ratio-filtered matches: 238. Median fundamental-matrix inliers: 162.5. All 38 pairs had at least 12 inliers. This supports trackability but does not prove correct calibration, depth, or a navigable scene.
 
+## Follow-up validation and optimizer safeguard
+A fresh independent OpenCV run on the uploaded MOV sampled 39 frames at 0.5-second intervals (38 adjacent pairs). With ORB at 640 × 360, the median ratio-filtered match count was 294 and the median fundamental-matrix RANSAC inlier count was 195; all 38 pairs had at least 64 inliers. This supports visual trackability, not calibrated depth or successful browser reconstruction.
+
+The optimizer now uses backtracking on each 3-parameter refinement block. A candidate update is accepted only if it does not increase that block's robust reprojection objective; otherwise the step is reduced up to seven times and then rejected.
+
 ## Verification
 - GitHub source re-fetched and confirmed: optimizer module, Reconstruction Lab import and invocation, result display, and regression test file.
-- Latest commit: `a005efd6a3160fbe37802de34183791c3a02cf75`.
-- The commit status endpoint returned no statuses; no pull-request workflow runs were returned. Automated test execution and deployment are therefore unverified.
+- The backtracking safeguard is present in the latest optimizer source.
+- Latest optimizer commit: `40bb3ef8bb9da1d821c30bd68b57c3c37b09333e`.
+- Automated test execution and deployment remain unverified; the commit status endpoint returned no statuses and no pull-request workflow runs were returned.
 - The browser Reconstruction Lab has not yet been run end-to-end with the uploaded video after this integration. No bundle-adjustment numerical result is claimed.
 
 ## Next validation
