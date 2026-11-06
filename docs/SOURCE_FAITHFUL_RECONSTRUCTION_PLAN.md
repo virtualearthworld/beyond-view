@@ -88,3 +88,9 @@ A successful build or passing unit tests alone does not satisfy these gates.
 An independent local OpenCV diagnostic of the uploaded source clip is documented in [Camera Motion and Coverage Analysis](./CAMERA_MOTION_COVERAGE_ANALYSIS.md). It sampled 40 frames at 0.5-second intervals and evaluated 39 adjacent pairs. Median ratio-filtered matches were 310, median fundamental-matrix inliers were 210, and median 4 × 3 image-grid occupancy was 7 of 12 cells; 38 of 39 pairs had inlier observations in at least three cells.
 
 These results justify proceeding to calibrated pose estimation and longer-lived tracks. They do not establish metric depth, a valid camera trajectory, or a navigable 3D reconstruction. The next gate is calibrated camera intrinsics, multi-frame track consistency, robust relative poses, positive-depth triangulation, and reprojection validation. Preserve ambiguous observations; do not generate unseen scenery.
+
+## Latest camera-pose sensitivity check
+
+An independent OpenCV test on the original clip evaluated 38 adjacent 0.5-second frame pairs at five provisional focal lengths (512, 640, 768, 896, and 1024 pixels at 640 × 360 analysis resolution). Relative-pose recovery with cheirality selection succeeded on 38/38 pairs at each assumption; median cheirality inliers ranged from 142 to 152.5. Full method and limitations are recorded in [Camera-Pose Calibration Sensitivity](./CAMERA_POSE_CALIBRATION_SENSITIVITY.md).
+
+This is not verified calibration or a validated global camera trajectory. The focal length and principal point remain assumptions; lens distortion, rolling shutter, dynamic foreground contamination, pose drift, and unknown monocular scale remain unresolved. Next gate: obtain/calibrate intrinsics, test track subsets and pose stability, then perform global consistency optimization before fusing triangulated points.
