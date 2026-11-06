@@ -16,18 +16,16 @@ const projection=(K,R,t)=>Array.from({length:3},(_,r)=>Array.from({length:4},(_,
   K[r][0]*[...R[0],t[0]][c]+K[r][1]*[...R[1],t[1]][c]+K[r][2]*[...R[2],t[2]][c])).flat();
 const residual=(P,X,obs)=>{const q=projectPoint(P,X);return q?[q[0]-obs.x,q[1]-obs.y]:null;};
 const cost=(rs)=>rs.reduce((s,r)=>{const e=Math.hypot(...r);return s+(e<=3?e*e:6*e-9);},0);
-function refine3(initial, observations, matrices, variable) {
+function refine3(initial, observations, projectAt) {
   let x=initial.slice();
   for(let it=0;it<5;it++){
     const H=Array.from({length:3},()=>[0,0,0]),g=[0,0,0];
-    for(let k=0;k<observations.length;k++){
-      const P=matrices[k],obs=observations[k],r=residual(P,variable==="point"?x:obs.cameraPoint,obs);
-      if(!r)continue;
+    for(const obs of observations){
+      const r=projectAt(x,obs);if(!r)continue;
       const J=[[0,0,0],[0,0,0]];
       for(let d=0;d<3;d++){
         const xp=x.slice();xp[d]+=1e-5;
-        const rr=variable==="point"?residual(P,xp,obs):residual(projection(obs.K,obs.R,xp),obs.cameraPoint,obs);
-        if(!rr)continue;
+        const rr=projectAt(xp,obs);if(!rr)continue;
         J[0][d]=(rr[0]-r[0])/1e-5;J[1][d]=(rr[1]-r[1])/1e-5;
       }
       const e=Math.hypot(...r),w=e<=3?1:3/Math.max(e,1e-9);
@@ -82,7 +80,7 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
     for(const l of landmarks){
       const obs=l.views.map(v=>({x:v.o.x,y:v.o.y}));
       const mats=l.views.map(v=>projection(K,v.p.rotation,v.p.translation));
-      l.point=refine3(l.point,obs,mats,"point");
+      l.point=refine3(l.point,obs,(X,o)=>{const index=obs.indexOf(o);const q=projectPoint(mats[index],X);return q?[q[0]-o.x,q[1]-o.y]:null;});
     }
     // Optimize each non-anchor translation from its observed landmarks.
     const components=new Map();
@@ -94,7 +92,7 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
         const linked=landmarks.filter(l=>l.track.componentId===componentId&&l.views.some(v=>v.p.frame===p.frame));
         if(linked.length<6)continue;
         const obs=linked.map(l=>{const v=l.views.find(v=>v.p.frame===p.frame);return {x:v.o.x,y:v.o.y,cameraPoint:l.point,K,R:p.rotation};});
-        const updated=refine3(p.translation,obs,obs.map(()=>null),"translation");
+        const updated=refine3(p.translation,obs,(t,o)=>{const q=projectPoint(projection(K,o.R,t),o.cameraPoint);return q?[q[0]-o.x,q[1]-o.y]:null;});
         if(finite3(updated))p.translation=updated;
       }
     }
