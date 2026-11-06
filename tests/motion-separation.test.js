@@ -45,3 +45,15 @@ test("keeps all tracks ambiguous when no homography exists", () => {
 test("rejects invalid dimensions", () => {
   assert.throws(()=>classifyMotionLayers([],identity,{width:0,height:300}),TypeError);
 });
+
+test("uses the supplied projective background transform", () => {
+  const tracks=gridTracks().map(track=>({
+    from:track.from,
+    to:{x:track.from.x+12,y:track.from.y-7}
+  }));
+  const translated={H:[1,0,12, 0,1,-7, 0,0,1]};
+  const result=classifyMotionLayers(tracks,translated,{width:300,height:300});
+  assert.equal(result.status,"background-model-supported");
+  assert.equal(result.backgroundConsistent.length,tracks.length);
+  assert.equal(result.independentMotionCandidates.length,0);
+});
