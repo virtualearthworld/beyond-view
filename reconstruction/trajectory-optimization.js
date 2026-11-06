@@ -90,10 +90,17 @@ export function regularizeCameraTrajectory(trajectory, persistentTracks = [], {
     if(!components.has(p.componentId)) components.set(p.componentId,[]);
     components.get(p.componentId).push(i);
   }
-  let adjusted=0, maxDisplacement=0, totalDisplacement=0, supportedPoseCount=0;
+  let adjusted=0, maxDisplacement=0, totalDisplacement=0, supportedPoseCount=0, validPoseCount=0;
+  let rawSecondDifferenceSum=0, optimizedSecondDifferenceSum=0, secondDifferenceCount=0;
   for (const [componentId, indices] of components) {
     if(indices.length<3) continue;
     const originals=indices.map(i=>poses[i].translation);
+    validPoseCount += indices.length;
+    for(let j=1;j<originals.length-1;j++){
+      const raw=originals[j-1].map((v,k)=>originals[j+1][k]-2*originals[j][k]+v);
+      rawSecondDifferenceSum += raw.reduce((sum,v)=>sum+v*v,0);
+      secondDifferenceCount++;
+    }
     const weights=indices.map(i=>{
       const count=support.get(componentId+":"+poses[i].frame)||0;
       if(count>=minimumObservations) supportedPoseCount++;
@@ -118,7 +125,10 @@ export function regularizeCameraTrajectory(trajectory, persistentTracks = [], {
       adjustedPoseCount:adjusted,
       supportedPoseCount,
       maxTranslationAdjustment:maxDisplacement,
-      meanTranslationAdjustment:poses.length?totalDisplacement/poses.length:0,
+      meanTranslationAdjustment:validPoseCount?totalDisplacement/validPoseCount:0,
+      rawPathAccelerationRms:secondDifferenceCount?Math.sqrt(rawSecondDifferenceSum/secondDifferenceCount):0,
+      regularizedPathAccelerationRms:secondDifferenceCount?Math.sqrt(optimizedSecondDifferenceSum/secondDifferenceCount):0,
+      pathSmoothnessMetric:"RMS second difference of translation within each connected component; lower means smoother, not necessarily more accurate",
       persistentTrackCount:persistentTracks.length,
       lambda,
       rotationsOptimized:false,
