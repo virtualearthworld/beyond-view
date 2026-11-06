@@ -110,3 +110,12 @@ An independent OpenCV analysis of the uploaded source clip measured 39/39 adjace
 This is still provisional pairwise geometry, not metric depth or a global world model. Verified intrinsics/distortion, static multi-frame tracks, global trajectory optimization, and stronger parallax remain required.
 
 The latest source-video parallax report has been refined to distinguish pooled point observations from per-pair medians: 6,726 positive-depth pair-local observations were evaluated, 1,838 (27.3%) had triangulation angles below 2 degrees, pooled median angle was 4.62 degrees, and median per-pair angle was 4.60 degrees. See [the detailed parallax report](./ORIGINAL_VIDEO_PARALLAX_TRIANGULATION_ANALYSIS.md). The new UI warning reports weak-parallax points but retains them for inspection; it does not claim that they are accurate depth measurements.
+
+
+## Latest implementation: multi-frame translation-path regularization
+
+The Reconstruction Lab now links persistent image tracks within successful camera components, then applies confidence-weighted second-difference regularization to the accumulated unit-baseline translation path. Component endpoints are anchored; failed-pose gaps and disconnected components are not bridged. Rotations remain unchanged. The UI reports adjusted-pose counts and the maximum provisional translation adjustment.
+
+This is a diagnostic smoothing step, **not full bundle adjustment**: it does not jointly optimize camera rotations, 3D landmarks, or image reprojection residuals, and it does not recover metric scale. Raw translations are retained for comparison. The next gate is source-frame reprojection validation before and after regularization. See [Multi-frame Trajectory Regularization Report](./MULTIFRAME_TRAJECTORY_REGULARIZATION_REPORT.md).
+
+A separate exploratory OpenCV check on the uploaded 19.835-second source sampled 40 frames at 0.5-second intervals. Across 39 adjacent pairs, median ORB ratio-filtered matches were 242, median fundamental-matrix inliers were 165, and median homography inliers were 110. This supports continued investigation, but does not certify static-background identity or 3D accuracy. Regression tests were added; execution and deployment remain unverified.
