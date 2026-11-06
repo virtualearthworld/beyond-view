@@ -194,11 +194,7 @@ run.addEventListener("click",async()=>{
       focalMultipliers:[0.8,1,1.2,1.4,1.6],
       estimateTrajectory:(pairs,candidateK)=>estimateCameraTrajectory(pairs,{K:candidateK,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6})
     });
-    const trajectory=estimateCameraTrajectory(framePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
-    const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
-    const fusion=fuseSparsePointClouds(sparse,trajectory);
-    const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
-    drawSparseCloud(previewSegment?.points || []);
+    const rawTrajectory=estimateCameraTrajectory(framePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6});
     let trajectories=[];
     if(pairTracks.length>=2){trajectories=linkTrackSequences(pairTracks,{joinTolerancePixels:5,minObservations:3});}
     const pairComponentIds=trajectory.segments.map(segment=>
@@ -207,6 +203,11 @@ run.addEventListener("click",async()=>{
     );
     const fullClipTrajectories=pairTracks.length>=2
       ?linkTrackSequencesByComponent(pairTracks,pairComponentIds,{joinTolerancePixels:5,minObservations:pairTracks.length+1}):[];
+    const trajectory=regularizeCameraTrajectory(rawTrajectory,fullClipTrajectories,{lambda:0.35,minimumObservations:3});
+    const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
+    const fusion=fuseSparsePointClouds(sparse,trajectory);
+    const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
+    drawSparseCloud(previewSegment?.points || []);
     const longestTrackFrames=fullClipTrajectories.reduce((max,t)=>Math.max(max,t.observations.length),0);
     const summary=summarizeParallax(first,second,tracks);
     const motion=estimateDominantTranslation(summary.tracks,{inlierThreshold:3});
