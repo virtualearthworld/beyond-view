@@ -39,3 +39,9 @@ The optimizer now uses backtracking on each 3-parameter refinement block. A cand
 
 ## Next validation
 Run the browser lab on the original MOV, check that enough persistent tracks triangulate, compare before/after reprojection error, and add held-out observations so the optimizer is not judged on its training observations. If the optimizer degrades held-out residuals, reject or constrain the update. Then progress to rotation refinement and calibrated bundle adjustment.
+
+
+## Held-out multi-view validation milestone
+The multi-view evaluator now reports interior-view reprojection errors separately. For each persistent track with at least three observations, the first and last observations are used to triangulate its provisional landmark; intermediate observations are excluded from that construction and measured as held-out checks. The Reconstruction Lab displays the held-out median pixel error and the number of held-out observations. Tracks with fewer than three observations cannot contribute held-out measurements.
+
+This is a stronger internal validation than reporting only the fitting observations, but it is not independent ground truth: the camera poses and assumed intrinsics are still estimated from the same video, and endpoint triangulation remains sensitive to calibration and parallax. Automated test execution, actual browser run on the MOV, and deployment must be verified before claiming a measured video result.
