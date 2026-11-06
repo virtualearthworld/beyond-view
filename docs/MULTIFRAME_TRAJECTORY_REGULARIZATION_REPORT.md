@@ -6,7 +6,7 @@ Added `reconstruction/trajectory-optimization.js` and integrated it into Reconst
 
 The optimizer is intentionally described as **confidence-weighted translation-path regularization**, not bundle adjustment. It applies a second-difference smoothness penalty to accumulated unit-baseline translations within each connected estimated component. Component endpoints are anchored. Failed-pose gaps and disconnected components are not bridged. Persistent image-track support increases a pose's data weight. Rotations and relative-pose measurements remain unchanged.
 
-The lab displays how many translation poses were adjusted, how many had persistent-track support, and the maximum translation adjustment in provisional units.
+The lab displays how many translation poses were adjusted, how many had persistent-track support, the maximum translation adjustment in provisional units, and raw-versus-regularized path acceleration RMS. The latter is the RMS second difference of translations within each connected component. A lower value means a smoother path, not necessarily a more accurate camera trajectory.
 
 ## Integration correction
 
@@ -42,10 +42,15 @@ This is an independent correspondence check only. It does not run the browser's 
 - checking persistent-track support using the actual `fromPairIndex` / coordinate-observation shape; and
 - rejecting invalid parameters.
 
-The test file is committed. Execution of the test suite and deployment were not independently confirmed in this work session.
+The test file is committed. I executed the three focused Node regression cases in an isolated local harness: all 3 passed. This verifies the regularizer's smoothing, endpoint anchoring, gap/component isolation, unchanged rotations, track-support indexing, and invalid-parameter handling. The repository-wide CI workflow and deployed website were not independently confirmed in this work session.
 
 ## Limitations
 
 This is not full bundle adjustment: it does not optimize camera rotations, 3D landmarks, or image reprojection residuals jointly. It does not solve loop closure, lens distortion, rolling shutter, camera calibration, or metric scale. Translation smoothing can make a path visually smoother without making it more physically accurate. Raw and regularized translations are retained for comparison. The next gate is to compare source-frame reprojection residuals before and after regularization and reject any smoothing that worsens measured image fit.
 
 No generated pixels or replacement scenery are introduced.
+
+
+## Follow-up change
+
+Added raw and regularized translation-path acceleration RMS to the optimizer output and exposed the comparison in the Reconstruction Lab. This is a diagnostic for smoothing strength only; it must not be interpreted as proof of lower reprojection error or better physical camera accuracy. The next validation gate remains source-image reprojection before and after regularization.
