@@ -27,3 +27,15 @@ test("reports insufficient tracks without inventing an error",()=>{
   assert.equal(result.status,"insufficient-multi-view-tracks");
   assert.equal(result.medianReprojectionErrorPixels,null);
 });
+
+
+test("reports interior observations separately from first/last-view triangulation",()=>{
+  const poses=[0,1,2,3,4].map(frame=>pose(frame,-frame));
+  const fiveView={poses};
+  const track={componentId:0,fromPairIndex:0,observations:[0,1,2,3,4].map(frame=>({x:50-20*frame,y:50}))};
+  const result=evaluateMultiViewReprojection([track],fiveView,K);
+  assert.equal(result.evaluatedLandmarks,1);
+  assert.equal(result.heldOutObservations,3);
+  assert.ok(result.heldOutMedianReprojectionErrorPixels < 1e-5);
+  assert.ok(result.heldOutP95ReprojectionErrorPixels < 1e-5);
+});
