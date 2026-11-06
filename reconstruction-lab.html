@@ -42,6 +42,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="metric"><strong id="parallax">—</strong><span>Median image displacement</span></div>
 <div class="metric"><strong id="dominant-motion">—</strong><span>Dominant 2D motion (dx, dy)</span></div>
 <div class="metric"><strong id="motion-support">—</strong><span>Tracks supporting 2D translation</span></div><div class="metric"><strong id="background-tracks">—</strong><span>Tracks consistent with dominant background motion</span></div><div class="metric"><strong id="residual-tracks">—</strong><span>Residual motion / parallax candidates (retained)</span></div>
+<div class="metric"><strong id="motion-layer-summary">—</strong><span>Frame pairs with enough spatially distributed background support</span></div>
 <div class="metric"><strong id="perspective-support">—</strong><span>Tracks supporting perspective model</span></div>
 <div class="metric"><strong id="perspective-error">—</strong><span>Median perspective fit error</span></div>
 <div class="metric"><strong id="perspective-coverage">—</strong><span>Perspective track spread (x × y)</span></div>
@@ -170,7 +171,8 @@ run.addEventListener("click",async()=>{
       const pairSummary=summarizeParallax(sampled[i],sampled[i+1],tracksForPair);
       const pairMotion=estimateDominantTranslation(pairSummary.tracks,{inlierThreshold:3});
       const pairPerspective=estimateHomographyRansac(pairSummary.tracks,{thresholdPixels:3,iterations:120});
-      pairReports.push({from:sampled[i].time,to:sampled[i+1].time,features:featureSets[i].length,matches:pairSummary.matchedFeatures,motionInliers:pairMotion.inliers.length,motionRatio:pairMotion.inlierRatio,perspectiveInliers:pairPerspective.inliers.length,perspectiveRatio:pairPerspective.inlierRatio,error:pairPerspective.medianReprojectionErrorPixels});
+      const pairLayers=classifyMotionLayers(pairSummary.tracks,pairPerspective,{width:sampled[i].width,height:sampled[i].height});
+      pairReports.push({from:sampled[i].time,to:sampled[i+1].time,features:featureSets[i].length,matches:pairSummary.matchedFeatures,motionInliers:pairMotion.inliers.length,motionRatio:pairMotion.inlierRatio,perspectiveInliers:pairPerspective.inliers.length,perspectiveRatio:pairPerspective.inlierRatio,error:pairPerspective.medianReprojectionErrorPixels,layerStatus:pairLayers.status,backgroundTracks:pairLayers.measurements.backgroundTracks,candidateTracks:pairLayers.measurements.candidateTracks,ambiguousTracks:pairLayers.measurements.ambiguousTracks,occupiedCells:pairLayers.measurements.occupiedCells});
     }
     const tracks=pairTracks[0]||[];
     const analysisFocalLength=focalLength*sampled[0].width/video.videoWidth;
@@ -199,9 +201,14 @@ run.addEventListener("click",async()=>{
     document.querySelector("#dominant-motion").textContent=motion.dx===null?"Not enough":motion.dx.toFixed(1)+", "+motion.dy.toFixed(1)+" px";
     document.querySelector("#motion-support").textContent=motion.inliers.length+" / "+summary.matchedFeatures+" ("+(motion.inlierRatio*100).toFixed(0)+"%)";
     document.querySelector("#perspective-support").textContent=perspective.inliers.length+" / "+summary.matchedFeatures+" ("+(perspective.inlierRatio*100).toFixed(0)+"%)";
-     const motionClasses=classifyMotionLayers(summary.tracks,perspective,{width:first.width,height:first.height});
-     document.querySelector("#background-tracks").textContent=String(motionClasses.backgroundConsistent.length)+" / "+motionClasses.measurements.occupiedCells+" cells";
-     document.querySelector("#residual-tracks").textContent=String(motionClasses.independentMotionCandidates.length+motionClasses.ambiguous.length);
+     const supportedLayerPairs=pairReports.filter(p=>p.layerStatus==="background-model-supported");
+     const backgroundTrackTotal=pairReports.reduce((sum,p)=>sum+p.backgroundTracks,0);
+     const candidateTrackTotal=pairReports.reduce((sum,p)=>sum+p.candidateTracks,0);
+     const ambiguousTrackTotal=pairReports.reduce((sum,p)=>sum+p.ambiguousTracks,0);
+     const occupiedCellTotal=pairReports.reduce((sum,p)=>sum+p.occupiedCells,0);
+     document.querySelector("#background-tracks").textContent=String(backgroundTrackTotal)+" tracks / "+occupiedCellTotal+" cells";
+     document.querySelector("#residual-tracks").textContent=String(candidateTrackTotal)+" candidates; "+ambiguousTrackTotal+" ambiguous";
+     document.querySelector("#motion-layer-summary").textContent=supportedLayerPairs.length+" / "+pairReports.length+" pairs supported";
     document.querySelector("#perspective-error").textContent=perspective.medianReprojectionErrorPixels===null?"—":perspective.medianReprojectionErrorPixels.toFixed(2)+" px";
     document.querySelector("#perspective-coverage").textContent=Math.round(perspective.coverage.spanX)+" × "+Math.round(perspective.coverage.spanY)+" px";
     document.querySelector("#trajectories").textContent=third?String(trajectories.length):"Need 3 frames";
@@ -233,7 +240,7 @@ run.addEventListener("click",async()=>{
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+". Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible, Motion-layer classification: "+motionClasses.status+"; "+motionClasses.limitation+". This is not yet a globally aligned or metric 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). Calibration is "+(focalLength===Math.round(video.videoWidth*1.2)?"assumed":"user-entered and unverified")+". Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Motion-layer separation found "+supportedLayerPairs.length+" of "+pairReports.length+" frame pairs with sufficient background support; residual candidates are not semantic person/water detections. This is not yet a globally aligned or metric 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;}
 });
