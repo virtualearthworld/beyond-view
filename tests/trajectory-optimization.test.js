@@ -16,7 +16,7 @@ const trajectory = {
 };
 
 test("regularizes translation inside a connected component and anchors endpoints",()=>{
-  const tracks=[{componentId:0,observations:[{frame:0},{frame:1},{frame:2}]}];
+  const tracks=[{componentId:0,fromPairIndex:0,toPairIndex:1,observations:[{x:10,y:10},{x:11,y:10},{x:12,y:10}]}];
   const result=regularizeCameraTrajectory(trajectory,tracks,{lambda:1});
   assert.deepEqual(result.poses[0].translation,[0,0,0]);
   assert.deepEqual(result.poses[2].translation,[2,0,0]);
@@ -25,6 +25,7 @@ test("regularizes translation inside a connected component and anchors endpoints
   assert.equal(result.poses[4].translation[0],0);
   assert.equal(result.optimization.rotationsOptimized,false);
   assert.equal(result.optimization.reprojectionBundleAdjustment,false);
+  assert.equal(result.optimization.supportedPoseCount,3);
 });
 
 test("rejects invalid regularization parameters",()=>{
