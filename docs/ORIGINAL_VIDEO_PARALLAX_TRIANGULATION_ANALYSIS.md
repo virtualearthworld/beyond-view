@@ -24,17 +24,21 @@ This experiment measures whether adjacent views in the original waterfront clip 
 | Median essential-matrix RANSAC inliers | 153 |
 | Median cheirality-selected points | 153 |
 | Median positive-depth triangulated points per pair | 153 |
-| Median two-view reprojection error | 0.385 px |
-| Median triangulation angle | 4.60° |
+| Median two-view reprojection error across accepted points | 0.388 px |
+| Median of the 39 per-pair median triangulation angles | 4.60° |
+| Accepted pair-local triangulated observations pooled | 6,726 |
+| Pooled observations below 2° | 1,838 / 6,726 (27.3%) |
 | Pairs with median angle above 5° | 19 / 39 |
 | Pairs with median angle above 10° | 7 / 39 |
 
-Triangulation-angle distribution across accepted points:
-- 10th percentile: 0.63°
-- 25th percentile: 1.87°
-- 50th percentile: 4.60°
-- 75th percentile: 8.29°
-- 90th percentile: 13.22°
+Pooled triangulation-angle distribution across 6,726 accepted pair-local observations:
+- 10th percentile: 0.79°
+- 25th percentile: 1.71°
+- 50th percentile: 4.62°
+- 75th percentile: 8.57°
+- 90th percentile: 14.78°
+
+The 39 per-pair median angles had 10th/25th/50th/75th/90th percentiles of 0.63° / 1.87° / 4.60° / 8.29° / 13.22°.
 
 ## Interpretation
 
