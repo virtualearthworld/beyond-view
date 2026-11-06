@@ -81,3 +81,10 @@ Do not call the result a successful 3D world until:
 - navigation is restricted to measured coverage.
 
 A successful build or passing unit tests alone does not satisfy these gates.
+
+
+## Latest camera-motion and coverage analysis
+
+An independent local OpenCV diagnostic of the uploaded source clip is documented in [Camera Motion and Coverage Analysis](./CAMERA_MOTION_COVERAGE_ANALYSIS.md). It sampled 40 frames at 0.5-second intervals and evaluated 39 adjacent pairs. Median ratio-filtered matches were 310, median fundamental-matrix inliers were 210, and median 4 × 3 image-grid occupancy was 7 of 12 cells; 38 of 39 pairs had inlier observations in at least three cells.
+
+These results justify proceeding to calibrated pose estimation and longer-lived tracks. They do not establish metric depth, a valid camera trajectory, or a navigable 3D reconstruction. The next gate is calibrated camera intrinsics, multi-frame track consistency, robust relative poses, positive-depth triangulation, and reprojection validation. Preserve ambiguous observations; do not generate unseen scenery.
