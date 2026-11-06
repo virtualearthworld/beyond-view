@@ -95,7 +95,7 @@ export function evaluateMultiViewReprojection(tracks, trajectory, K, {
     skippedTracks,
     medianReprojectionErrorPixels: median(errors),
     meanReprojectionErrorPixels: errors.length ? errors.reduce((a,b)=>a+b,0)/errors.length : null,
-    p95ReprojectionErrorPixels: median(errors.length ? errors.slice().sort((a,b)=>a-b).slice(Math.floor(errors.length*0.95)) : []),
+    p95ReprojectionErrorPixels: percentile95,
     calibrationAssumed: true,
     metricScaleKnown: false,
     limitation: "This is a track-based diagnostic using the supplied camera path and assumed intrinsics. It is not bundle adjustment or independent ground-truth accuracy; first/last-view triangulation and all-view reprojection use the same observations."
