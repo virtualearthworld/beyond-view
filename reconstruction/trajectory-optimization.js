@@ -68,11 +68,16 @@ export function regularizeCameraTrajectory(trajectory, persistentTracks = [], {
   for (const track of persistentTracks) {
     if (!track || !Array.isArray(track.observations) ||
         !Number.isInteger(track.componentId) ||
-        track.observations.some(p => !p || !Number.isFinite(p.frame))) continue;
-    for (const observation of track.observations) {
-      const key = track.componentId + ":" + observation.frame;
+        !Number.isInteger(track.fromPairIndex) || track.fromPairIndex < 0) continue;
+    // linkTrackSequencesByComponent stores image coordinates without a frame
+    // field. Its first observation is fromPairIndex; each subsequent
+    // observation belongs to the next sampled frame.
+    track.observations.forEach((observation, observationIndex) => {
+      if (!observation || !Number.isFinite(observation.x) || !Number.isFinite(observation.y)) return;
+      const frame = track.fromPairIndex + observationIndex;
+      const key = track.componentId + ":" + frame;
       support.set(key, (support.get(key) || 0) + 1);
-    }
+    });
   }
   const poses = trajectory.poses.map(p => ({...p,
     translation: finiteVector(p.translation) ? p.translation.slice() : p.translation
