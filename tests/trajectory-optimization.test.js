@@ -37,3 +37,14 @@ test("does not bridge disconnected components or alter rotations",()=>{
   assert.deepEqual(result.poses[4].translation,[0,0,0]);
   assert.deepEqual(result.poses[1].rotation,trajectory.poses[1].rotation);
 });
+
+test("reports lower optimized acceleration for a noisy middle pose",()=>{
+  const noisy={...trajectory,poses:[
+    {frame:0,status:"estimated",componentId:0,translation:[0,0,0],rotation:[[1,0,0],[0,1,0],[0,0,1]]},
+    {frame:1,status:"estimated",componentId:0,translation:[1,4,0],rotation:[[1,0,0],[0,1,0],[0,0,1]]},
+    {frame:2,status:"estimated",componentId:0,translation:[2,0,0],rotation:[[1,0,0],[0,1,0],[0,0,1]]}
+  ]};
+  const result=regularizeCameraTrajectory(noisy,[],{lambda:1});
+  assert.ok(result.optimization.regularizedPathAccelerationRms < result.optimization.rawPathAccelerationRms);
+  assert.ok(Number.isFinite(result.optimization.regularizedPathAccelerationRms));
+});
