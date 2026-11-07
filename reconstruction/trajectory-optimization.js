@@ -41,9 +41,15 @@ function regularizeAxis(values, weights, lambda) {
     for(let r=0;r<3;r++) for(let s=0;s<3;s++) A[ids[r]][ids[s]] += lambda*c[r]*c[s];
   }
   // Hard-anchor both endpoints to the measured component endpoints.
+  // Move each fixed-variable contribution to the right-hand side before
+  // removing its column; otherwise the interior solution is biased.
   for (const endpoint of [0,n-1]) {
+    const fixedValue = values[endpoint];
+    for (let j=0;j<n;j++) {
+      if (j !== endpoint) b[j] -= A[j][endpoint] * fixedValue;
+    }
     for(let j=0;j<n;j++){ A[endpoint][j]=0; A[j][endpoint]=0; }
-    A[endpoint][endpoint]=1; b[endpoint]=values[endpoint];
+    A[endpoint][endpoint]=1; b[endpoint]=fixedValue;
   }
   return solve(A,b) || values.slice();
 }

@@ -21,6 +21,10 @@ test("regularizes translation inside a connected component and anchors endpoints
   assert.deepEqual(result.poses[0].translation,[0,0,0]);
   assert.deepEqual(result.poses[2].translation,[2,0,0]);
   assert.ok(result.poses[1].translation[1] < 4);
+  // Exact minimizer for (y - 4)^2 + (0 - 2y + 0)^2
+  // with endpoints fixed at zero is y = 0.8.
+  assert.ok(Math.abs(result.poses[1].translation[1] - 0.8) < 1e-9,
+    "fixed endpoint contributions must be included in the interior equation");
   assert.equal(result.poses[3].status,"gap");
   assert.equal(result.poses[4].translation[0],0);
   assert.equal(result.optimization.rotationsOptimized,false);
