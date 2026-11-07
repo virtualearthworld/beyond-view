@@ -250,3 +250,65 @@ export function triangulateTracks(P1, P2, tracks, {
   }
   return points;
 }
+
+
+/**
+ * Triangulate one landmark from three or more calibrated camera views.
+ * All observations must share the same world coordinate system.
+ * Returns null for degenerate or non-finite solutions.
+ */
+export function triangulateMultiViewPoint(projections, observations) {
+  if (!Array.isArray(projections) || !Array.isArray(observations) ||
+      projections.length !== observations.length || projections.length < 2) {
+    throw new TypeError("Provide matching projection and observation arrays with at least two views.");
+  }
+  const ata = Array.from({ length: 4 }, () => Array(4).fill(0));
+  for (let i = 0; i < projections.length; i++) {
+    const P = projections[i], observation = observations[i];
+    finiteArray(P, 12, "projection");
+    finiteArray(observation, 2, "observation");
+    const [u, v] = observation;
+    const rows = [
+      P.slice(0, 4).map((value, j) => u * P[8 + j] - value),
+      P.slice(4, 8).map((value, j) => v * P[8 + j] - value)
+    ];
+    for (const row of rows) {
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) ata[r][c] += row[r] * row[c];
+      }
+    }
+  }
+  const a = ata.map(row => row.slice());
+  const vectors = Array.from({ length: 4 }, (_, r) =>
+    Array.from({ length: 4 }, (_, c) => r === c ? 1 : 0)
+  );
+  for (let iteration = 0; iteration < 100; iteration++) {
+    let p = 0, q = 1, largest = Math.abs(a[0][1]);
+    for (let r = 0; r < 4; r++) for (let c = r + 1; c < 4; c++) {
+      if (Math.abs(a[r][c]) > largest) { largest = Math.abs(a[r][c]); p = r; q = c; }
+    }
+    if (largest < 1e-12) break;
+    const angle = 0.5 * Math.atan2(2 * a[p][q], a[q][q] - a[p][p]);
+    const cosine = Math.cos(angle), sine = Math.sin(angle);
+    const app = cosine*cosine*a[p][p] - 2*sine*cosine*a[p][q] + sine*sine*a[q][q];
+    const aqq = sine*sine*a[p][p] + 2*sine*cosine*a[p][q] + cosine*cosine*a[q][q];
+    for (let k = 0; k < 4; k++) {
+      if (k === p || k === q) continue;
+      const akp = a[k][p], akq = a[k][q];
+      a[k][p] = a[p][k] = cosine*akp - sine*akq;
+      a[k][q] = a[q][k] = sine*akp + cosine*akq;
+    }
+    a[p][p] = app; a[q][q] = aqq; a[p][q] = a[q][p] = 0;
+    for (let k = 0; k < 4; k++) {
+      const vkp = vectors[k][p], vkq = vectors[k][q];
+      vectors[k][p] = cosine*vkp - sine*vkq;
+      vectors[k][q] = sine*vkp + cosine*vkq;
+    }
+  }
+  let smallest = 0;
+  for (let i = 1; i < 4; i++) if (a[i][i] < a[smallest][smallest]) smallest = i;
+  const homogeneous = vectors.map(row => row[smallest]);
+  if (!homogeneous.every(Number.isFinite) || Math.abs(homogeneous[3]) < 1e-10) return null;
+  const point = homogeneous.slice(0, 3).map(value => value / homogeneous[3]);
+  return point.every(Number.isFinite) ? point : null;
+}

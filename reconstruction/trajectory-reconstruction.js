@@ -1,4 +1,4 @@
-import { triangulatePoint, projectPoint } from "./multiview-geometry.js";
+import { triangulatePoint, triangulateMultiViewPoint, projectPoint } from "./multiview-geometry.js";
 
 const validK = K => Array.isArray(K) && K.length === 3 &&
   K.every(row => Array.isArray(row) && row.length === 3 && row.every(Number.isFinite));
@@ -140,5 +140,150 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
     scaleKnown: false,
     fusedWorldModel: false,
     limitation: "Points are triangulated per frame pair in local coordinates. Verified calibration, scale recovery, trajectory optimization, and multi-frame point fusion are still required for a consistent world reconstruction."
+  };
+}
+
+
+/**
+ * Reconstruct linked landmarks from all their observations in a connected
+ * camera component. Unlike pairwise cloud merging, each output point is solved
+ * once from every available view and checked against every contributing frame.
+ *
+ * framePairs use the same frame numbering as trajectory.poses. linkedTracks
+ * are expected from linkTrackSequencesByComponent and must retain component IDs.
+ */
+export function reconstructMultiViewLandmarks(framePairs, linkedTracks, trajectory, K, {
+  minimumObservations = 3,
+  minimumTriangulationAngleDegrees = 2,
+  maxMeanReprojectionError = 2,
+  maxSingleReprojectionError = 4
+} = {}) {
+  if (!Array.isArray(framePairs) || !Array.isArray(linkedTracks) ||
+      !trajectory || !Array.isArray(trajectory.poses) || !validK(K) ||
+      !Number.isInteger(minimumObservations) || minimumObservations < 2 ||
+      !Number.isFinite(minimumTriangulationAngleDegrees) ||
+      minimumTriangulationAngleDegrees < 0 || minimumTriangulationAngleDegrees > 90 ||
+      !Number.isFinite(maxMeanReprojectionError) || maxMeanReprojectionError < 0 ||
+      !Number.isFinite(maxSingleReprojectionError) || maxSingleReprojectionError < 0) {
+    throw new TypeError("Invalid multi-view landmark reconstruction inputs.");
+  }
+  const multiplyK = (R, t) => {
+    const Rt = R.map((row, i) => [...row, t[i]]);
+    return Array.from({ length: 3 }, (_, row) =>
+      Array.from({ length: 4 }, (_, col) =>
+        K[row][0] * Rt[0][col] + K[row][1] * Rt[1][col] + K[row][2] * Rt[2][col]
+      )
+    ).flat();
+  };
+  const poseMap = new Map();
+  for (const pose of trajectory.poses) {
+    if (pose?.status !== "estimated" || !Number.isInteger(pose.componentId) ||
+        !Number.isFinite(pose.frame) || !validPose({
+          rotation: pose.rotation,
+          translationDirection: pose.translation
+        })) continue;
+    const key = pose.componentId + ":" + pose.frame;
+    if (!poseMap.has(key)) poseMap.set(key, pose);
+  }
+  const cameraCenter = pose => {
+    const transposed = applyTranspose(pose.rotation, pose.translation.map(value => -value));
+    return transposed;
+  };
+  const cameraDepth = (pose, point) => {
+    const cameraPoint = pose.rotation.map((row, i) =>
+      row.reduce((sum, value, j) => sum + value * point[j], pose.translation[i])
+    );
+    return cameraPoint[2];
+  };
+  const points = [], rejected = {
+    insufficientObservations: 0, missingCameraPose: 0, triangulationFailure: 0,
+    negativeDepth: 0, weakParallax: 0, reprojectionError: 0
+  };
+  for (const track of linkedTracks) {
+    if (!track || !Array.isArray(track.observations) ||
+        !Number.isInteger(track.componentId) || !Number.isInteger(track.fromPairIndex) ||
+        track.fromPairIndex < 0) continue;
+    const observationRecords = [];
+    for (let offset = 0; offset < track.observations.length; offset++) {
+      const pair = framePairs[track.fromPairIndex + offset];
+      const observation = track.observations[offset];
+      if (!pair || !observation || !Number.isFinite(observation.x) || !Number.isFinite(observation.y)) continue;
+      const frame = offset === 0 ? (pair.fromFrame ?? track.fromPairIndex + offset)
+        : (framePairs[track.fromPairIndex + offset - 1]?.toFrame ?? track.fromPairIndex + offset);
+      const pose = poseMap.get(track.componentId + ":" + frame);
+      if (!pose) continue;
+      observationRecords.push({ frame, observation: [observation.x, observation.y], pose });
+    }
+    if (observationRecords.length < minimumObservations) {
+      rejected.insufficientObservations++;
+      continue;
+    }
+    const projections = observationRecords.map(record =>
+      multiplyK(record.pose.rotation, record.pose.translation)
+    );
+    const observations = observationRecords.map(record => record.observation);
+    const point = triangulateMultiViewPoint(projections, observations);
+    if (!point) { rejected.triangulationFailure++; continue; }
+    const depths = observationRecords.map(record => cameraDepth(record.pose, point));
+    if (depths.some(depth => !(depth > 1e-10))) { rejected.negativeDepth++; continue; }
+    const errors = observationRecords.map((record, index) => {
+      const projected = projectPoint(projections[index], point);
+      return projected ? Math.hypot(
+        projected[0] - record.observation[0],
+        projected[1] - record.observation[1]
+      ) : Infinity;
+    });
+    if (errors.some(error => !Number.isFinite(error))) {
+      rejected.reprojectionError++;
+      continue;
+    }
+    const meanReprojectionError = errors.reduce((sum, error) => sum + error, 0) / errors.length;
+    const maxReprojectionError = Math.max(...errors);
+    if (meanReprojectionError > maxMeanReprojectionError ||
+        maxReprojectionError > maxSingleReprojectionError) {
+      rejected.reprojectionError++;
+      continue;
+    }
+    const centers = observationRecords.map(record => cameraCenter(record.pose));
+    let maximumAngle = 0;
+    for (let i = 0; i < centers.length; i++) for (let j = i + 1; j < centers.length; j++) {
+      const a = point.map((value, axis) => value - centers[i][axis]);
+      const b = point.map((value, axis) => value - centers[j][axis]);
+      const denominator = Math.hypot(...a) * Math.hypot(...b);
+      if (denominator <= 1e-12) continue;
+      const cosine = a.reduce((sum, value, axis) => sum + value * b[axis], 0) / denominator;
+      maximumAngle = Math.max(maximumAngle,
+        Math.acos(Math.max(-1, Math.min(1, cosine))) * 180 / Math.PI);
+    }
+    if (maximumAngle < minimumTriangulationAngleDegrees) {
+      rejected.weakParallax++;
+      continue;
+    }
+    points.push({
+      position: point,
+      componentId: track.componentId,
+      fromFrame: observationRecords[0].frame,
+      toFrame: observationRecords[observationRecords.length - 1].frame,
+      observations: observationRecords.length,
+      observedFrames: observationRecords.map(record => record.frame),
+      meanReprojectionError,
+      maxReprojectionError,
+      maximumTriangulationAngleDegrees: maximumAngle,
+      scaleKnown: false
+    });
+  }
+  return {
+    status: points.length ? "multi-view-landmarks-estimated" : "no-validated-multi-view-landmarks",
+    pointCount: points.length,
+    points,
+    inputTrackCount: linkedTracks.length,
+    rejected,
+    minimumObservations,
+    minimumTriangulationAngleDegrees,
+    maxMeanReprojectionError,
+    maxSingleReprojectionError,
+    scaleKnown: false,
+    metricGeometry: false,
+    limitation: "Each accepted landmark is triangulated from all available observations in one connected component and checked in every contributing view. Camera poses remain relative and unit-baseline; this does not yet perform joint camera-and-point bundle adjustment, recover metric scale, close loops, or create dense surfaces."
   };
 }
