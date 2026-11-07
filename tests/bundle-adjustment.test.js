@@ -16,7 +16,8 @@ test("bundle adjustment retains a consistent measured landmark and anchored firs
   assert.ok(Number.isFinite(result.initialMedianError));
   assert.ok(Number.isFinite(result.finalMedianError));
   assert.ok(result.finalMedianError <= result.initialMedianError+1e-6);
-  assert.equal(result.rotationOptimization,false);
+  assert.equal(result.rotationOptimization,true);
+  assert.equal(result.rotationMethod,"robust-coordinate-search");
   assert.equal(result.scaleKnown,false);
 });
 
