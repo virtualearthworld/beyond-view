@@ -40,5 +40,15 @@ assert.deepEqual(connected.points[0].sourceSegments, [0,1]);
 assert.ok(Math.abs(connected.points[0].position[0] - 0.0025) < 1e-9);
 const separate = result.components.find(c => c.componentId === 1);
 assert.equal(separate.pointCount, 1, "points across a camera-path gap must not be fused");
+const supportedOnly = fuseSparsePointClouds(reconstruction, trajectory, {
+  mergeDistance:0.02,
+  minimumSupport:2
+});
+assert.equal(supportedOnly.minimumSupport, 2);
+assert.equal(supportedOnly.filteredBySupportPointCount, 1,
+  "single-observation points should be reported as filtered from the stable cloud");
+assert.equal(supportedOnly.fusedPointCount, 1,
+  "only a point observed in multiple frame-pair clouds should remain");
+assert.equal(supportedOnly.components.find(c => c.componentId === 0).points[0].support, 2);
 assert.throws(() => fuseSparsePointClouds(reconstruction, trajectory, { mergeDistance:0 }), /Invalid/);
 console.log("point-cloud fusion regression tests passed");

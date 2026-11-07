@@ -99,8 +99,10 @@ export function fuseSparsePointClouds(reconstruction, trajectory, {
     }
   }
 
+  let filteredBySupportPointCount = 0;
   const output = [...components.entries()].map(([componentId, points]) => {
     const filtered = points.filter(p => p.support >= minimumSupport);
+    filteredBySupportPointCount += points.length - filtered.length;
     const serialized = filtered.map(p => ({
       position: p.position,
       support: p.support,
@@ -123,6 +125,8 @@ export function fuseSparsePointClouds(reconstruction, trajectory, {
     acceptedObservations,
     rejectedObservations: rejected,
     fusedPointCount: output.reduce((sum, c) => sum + c.pointCount, 0),
+    filteredBySupportPointCount,
+    minimumSupport,
     mergeDistance,
     scaleKnown: false,
     metricGeometry: false,
