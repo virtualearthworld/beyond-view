@@ -26,6 +26,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run all reconstruction regression tests
-        run: |
-          node --experimental-default-type=module --test tests/*.test.mjs tests/*.test.js
+      - name: Test 01 tests/bundle-adjustment.test.js
+        run: node --experimental-default-type=module --test tests/bundle-adjustment.test.js
+      - name: Test 02 tests/calibration-sensitivity.test.js
+        run: node --experimental-default-type=module --test tests/calibration-sensitivity.test.js
+      - name: Test 03 tests/camera-pose.test.mjs
+        run: node --experimental-default-type=module --test tests/camera-pose.test.mjs
+      - name: Test 04 tests/camera-trajectory.test.mjs
+        run: node --experimental-default-type=module --test tests/camera-trajectory.test.mjs
+      - name: Test 05 tests/component-fusion-integration.test.mjs
+        run: node --experimental-default-type=module --test tests/component-fusion-integration.test.mjs
+      - name: Test 06 tests/epipolar-geometry.test.mjs
+        run: node --experimental-default-type=module --test tests/epipolar-geometry.test.mjs
+      - name: Test 07 tests/motion-separation.test.js
+        run: node --experimental-default-type=module --test tests/motion-separation.test.js
+      - name: Test 08 tests/multiview-geometry.test.mjs
+        run: node --experimental-default-type=module --test tests/multiview-geometry.test.mjs
+      - name: Test 09 tests/multiview-reprojection.test.js
+        run: node --experimental-default-type=module --test tests/multiview-reprojection.test.js
+      - name: Test 10 tests/parallax-diagnostics.test.mjs
+        run: node --experimental-default-type=module --test tests/parallax-diagnostics.test.mjs
+      - name: Test 11 tests/point-cloud-fusion.test.mjs
+        run: node --experimental-default-type=module --test tests/point-cloud-fusion.test.mjs
+      - name: Test 12 tests/reconstruction-lab.test.mjs
+        run: node --experimental-default-type=module --test tests/reconstruction-lab.test.mjs
+      - name: Test 13 tests/reprojection-validation.test.js
+        run: node --experimental-default-type=module --test tests/reprojection-validation.test.js
+      - name: Test 14 tests/sparse-cloud-view.test.mjs
+        run: node --experimental-default-type=module --test tests/sparse-cloud-view.test.mjs
+      - name: Test 15 tests/sparse-reconstruction.test.mjs
+        run: node --experimental-default-type=module --test tests/sparse-reconstruction.test.mjs
+      - name: Test 16 tests/trajectory-optimization.test.js
+        run: node --experimental-default-type=module --test tests/trajectory-optimization.test.js
+      - name: Test 17 tests/trajectory-reconstruction.test.js
+        run: node --experimental-default-type=module --test tests/trajectory-reconstruction.test.js
+      - name: Test 18 tests/trajectory-reconstruction.test.mjs
+        run: node --experimental-default-type=module --test tests/trajectory-reconstruction.test.mjs
+      - name: Test 19 tests/two-view-pipeline.test.mjs
+        run: node --experimental-default-type=module --test tests/two-view-pipeline.test.mjs
