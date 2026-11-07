@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("../reconstruction-lab.html", import.meta.url), "utf8");
+const motion = await readFile(new URL("../reconstruction/motion-separation.js", import.meta.url), "utf8");
 assert.match(html, /Multi-frame consistency check/);
 assert.match(html, /intervalSeconds:0\.5,maxFrames:48,width:640/);
 assert.match(html, /for\(let i=0;i<sampled\.length-1;i\+\+\)/);
@@ -36,10 +37,12 @@ assert.match(html, /fusion-observations/);
 assert.match(html, /fusion-rejected/);
 assert.match(html, /connected camera components/);
 
-assert.match(html, /classifyTrackMotionAgainstBackground/);
+assert.match(html, /import \{ classifyMotionLayers \} from "\.\/reconstruction\/motion-separation\.js"/);
+assert.match(html, /classifyMotionLayers\(/);
+assert.match(motion, /export function classifyMotionLayers/);
 assert.match(html, /id="background-tracks"/);
 assert.match(html, /id="residual-tracks"/);
-assert.match(html, /possible moving-subject, parallax, occlusion/);
+assert.match(motion, /moving subjects, parallax, occlusion/);
 console.log("background and residual motion diagnostics integration test passed");
 
 assert.match(html, /id="cloud-reset"/);
