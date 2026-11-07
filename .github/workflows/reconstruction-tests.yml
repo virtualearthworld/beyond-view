@@ -26,17 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run reconstruction regression tests
+      - name: Run all reconstruction regression tests
         run: |
-          node --experimental-default-type=module tests/multiview-geometry.test.mjs
-          node --experimental-default-type=module tests/sparse-reconstruction.test.mjs
-          node --experimental-default-type=module tests/parallax-diagnostics.test.mjs
-          node --experimental-default-type=module tests/epipolar-geometry.test.mjs
-          node --experimental-default-type=module tests/camera-pose.test.mjs
-          node --experimental-default-type=module tests/two-view-pipeline.test.mjs
-          node --experimental-default-type=module tests/camera-trajectory.test.mjs
-          node --experimental-default-type=module tests/reconstruction-lab.test.mjs
-          node --experimental-default-type=module tests/trajectory-reconstruction.test.mjs
-          node --experimental-default-type=module tests/sparse-cloud-view.test.mjs
-          node --experimental-default-type=module tests/point-cloud-fusion.test.mjs
-          node --experimental-default-type=module tests/component-fusion-integration.test.mjs
+          node --experimental-default-type=module --test tests/*.test.mjs tests/*.test.js
