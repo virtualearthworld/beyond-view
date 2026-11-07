@@ -27,5 +27,5 @@ export function componentToAsciiPly(component) {
     lines.push([...point.position, point.support, error].map(value =>
       Number.isInteger(value) ? String(value) : Number(value).toPrecision(9)).join(" "));
   }
-  return lines.join("\\n") + "\\n";
+  return lines.join("\n") + "\n";
 }
