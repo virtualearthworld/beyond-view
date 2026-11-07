@@ -16,6 +16,36 @@ const projection=(K,R,t)=>Array.from({length:3},(_,r)=>Array.from({length:4},(_,
   K[r][0]*[...R[0],t[0]][c]+K[r][1]*[...R[1],t[1]][c]+K[r][2]*[...R[2],t[2]][c])).flat();
 const residual=(P,X,obs)=>{const q=projectPoint(P,X);return q?[q[0]-obs.x,q[1]-obs.y]:null;};
 const cost=(rs)=>rs.reduce((s,r)=>{const e=Math.hypot(...r);return s+(e<=3?e*e:6*e-9);},0);
+
+const rotationStep = (R, axis, angle) => {
+  const c=Math.cos(angle), sn=Math.sin(angle);
+  const D=axis===0?[[1,0,0],[0,c,-sn],[0,sn,c]]
+    :axis===1?[[c,0,sn],[0,1,0],[-sn,0,c]]
+    :[[c,-sn,0],[sn,c,0],[0,0,1]];
+  return D.map(row=>R[0].map((_,j)=>row.reduce((sum,value,k)=>sum+value*R[k][j],0)));
+};
+function refineRotation(initial, observations, projectAt) {
+  let R=initial.map(row=>row.slice()), step=0.01;
+  const objective=rotation=>observations.reduce((sum,obs)=>{
+    const r=projectAt(rotation,obs);if(!r)return sum+1e6;
+    const e=Math.hypot(...r);return sum+(e<=3?e*e:6*e-9);
+  },0);
+  let best=objective(R);
+  for(let round=0;round<7;round++){
+    let changed=false;
+    for(let axis=0;axis<3;axis++){
+      for(const direction of [-1,1]){
+        const candidate=rotationStep(R,axis,direction*step);
+        const value=objective(candidate);
+        if(value<best-1e-10){R=candidate;best=value;changed=true;}
+      }
+    }
+    if(!changed)step*=0.5;
+    if(step<1e-5)break;
+  }
+  return R;
+}
+
 function refine3(initial, observations, projectAt) {
   let x=initial.slice();
   for(let it=0;it<5;it++){
@@ -111,6 +141,19 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
         const updated=refine3(p.translation,obs,(t,o)=>{const q=projectPoint(projection(K,o.R,t),o.cameraPoint);return q?[q[0]-o.x,q[1]-o.y]:null;});
         if(finite3(updated))p.translation=updated;
       }
+      // Refine camera orientation against the same linked landmarks while
+      // retaining the component anchor and the relative-scale gauge.
+      for(const p of component){
+        if(p===anchor)continue;
+        const linked=landmarks.filter(l=>l.track.componentId===componentId&&l.views.some(v=>v.p.frame===p.frame));
+        if(linked.length<6)continue;
+        const obs=linked.map(l=>{const v=l.views.find(v=>v.p.frame===p.frame);return {x:v.o.x,y:v.o.y,cameraPoint:l.point};});
+        const updated=refineRotation(p.rotation,obs,(R,o)=>{
+          const q=projectPoint(projection(K,R,p.translation),o.cameraPoint);
+          return q?[q[0]-o.x,q[1]-o.y]:null;
+        });
+        if(Array.isArray(updated)&&updated.length===3&&updated.every(row=>row.every(Number.isFinite)))p.rotation=updated;
+      }
     }
   }
   map=poseMap();
@@ -118,6 +161,6 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
   const finalMeanError=finalErrors.length?finalErrors.reduce((a,b)=>a+b,0)/finalErrors.length:null;
   return {status:"experimental-translation-landmark-bundle-adjustment",poses,landmarks:landmarks.map(l=>({componentId:l.track.componentId,fromPairIndex:l.track.fromPairIndex,position:l.point,observations:l.views.length})),
     initialMedianError,finalMedianError:med(finalErrors),initialMeanError,finalMeanError,optimizedTracks:landmarks.length,iterations,
-    rotationOptimization:false, intrinsicsOptimized:false,scaleKnown:false,
-    limitation:"Experimental block-coordinate bundle adjustment: rotations and intrinsics fixed, first pose per component anchored, monocular scale remains arbitrary. Residuals use the same observations used for fitting; validate on held-out observations before claiming accuracy."};
+    rotationOptimization:true, rotationMethod:"robust-coordinate-search", intrinsicsOptimized:false,scaleKnown:false,
+    limitation:"Experimental block-coordinate bundle adjustment: camera translations and rotations are refined while intrinsics remain fixed; first pose per component is anchored and monocular scale remains arbitrary. Residuals use the same observations used for fitting; validate on held-out observations before claiming accuracy."};
 }
