@@ -5,6 +5,7 @@ on:
     paths:
       - "reconstruction/**"
       - "tests/**"
+      - "index.html"
       - ".github/workflows/reconstruction-tests.yml"
   pull_request:
     paths:
