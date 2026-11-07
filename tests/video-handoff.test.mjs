@@ -15,3 +15,6 @@ assert.match(html, /Keep this tab open until the engine finishes importing/,
 assert.match(html, /not uploaded to a Beyond View server/,
   "the privacy statement must accurately describe the local browser handoff");
 console.log("video-to-engine handoff integration tests passed");
+
+assert.match(html, /orbit (videos|footage)[\s\S]*mostly stationary subject/i, "the homepage must state the current orbit-video input requirement");
+assert.match(html, /desktop Chrome or Edge with WebGPU/i, "the homepage must state the tested browser and GPU requirement");

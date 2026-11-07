@@ -66,7 +66,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <a class="file-label" href="./reconstruction-lab.html">Open Reconstruction Lab</a>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
-<p id="file-help" class="small">Common formats such as MP4 and MOV are recommended.</p>
+<p id="file-help" class="small">MP4 or MOV recommended. Important: the current engine is designed for orbit footage—camera moving around a mostly stationary subject—not arbitrary movies with cuts or a moving subject. Use desktop Chrome or Edge with WebGPU for the best chance of processing.</p>
 <div id="file-info" class="file-info" aria-live="polite"></div>
 <video id="player" controls playsinline preload="metadata"></video>
 <div id="note" class="status" role="status" aria-live="polite">Milestone: video-to-3D reconstruction. Open the engine below to select a video for processing. A successful result is a 3D scene, but not necessarily a complete collision-aware world you can walk anywhere in.</div>
@@ -75,12 +75,13 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <div id="frame-status" class="small" aria-live="polite">Choose a video first.</div>
 </div>
 <div id="engine-panel" hidden style="margin-top:18px">
-<strong>Video-to-3D reconstruction engine</strong><p class="small">The engine processes suitable orbit videos into a Gaussian-splat 3D scene. It may require WebGPU and a modern browser. A Gaussian-splat scene is immersive, but does not guarantee unrestricted walking or collision-aware movement.</p><a class="file-label" href="./immersive-engine/index.html">Launch reconstruction engine</a>
+<strong>Video-to-3D reconstruction engine</strong><p class="small">The current engine is specialized for orbit videos: move the camera steadily around a mostly stationary subject, with overlapping views and clear surface detail. It is not yet a general-purpose converter for every ordinary video. Use desktop Chrome or Edge with WebGPU. A Gaussian-splat scene is immersive, but does not guarantee unrestricted walking or collision-aware movement.</p><a class="file-label" href="./immersive-engine/index.html">Launch reconstruction engine</a>
 </div>
 <details>
 <summary>Tips for recording a future 3D scene</summary>
 <ul class="guide">
-<li>Move slowly and keep the camera steady.</li>
+<li>Walk the camera slowly around a mostly stationary subject; avoid moving the subject.</li>
+<li>Keep the subject in view and overlap each new angle with the previous one.</li>
 <li>Capture overlapping views from several angles.</li>
 <li>Include clear details and textured surfaces.</li>
 <li>Avoid fast turns, heavy blur, and large jumps in viewpoint.</li>
