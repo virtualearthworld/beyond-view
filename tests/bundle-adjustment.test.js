@@ -31,6 +31,8 @@ test("reports insufficient tracks without fabricating reprojection metrics",()=>
   assert.equal(result.optimizedTracks,0);
   assert.equal(result.initialMedianError,null);
   assert.equal(result.finalMedianError,null);
+  assert.equal(result.initialMeanError,null);
+  assert.equal(result.finalMeanError,null);
 });
 
 test("bundle adjustment corrects a perturbed middle camera using multiple landmarks", () => {
@@ -60,7 +62,7 @@ test("bundle adjustment corrects a perturbed middle camera using multiple landma
     {maxTracks:100,iterations:5,minObservations:3});
   assert.equal(result.optimizedTracks, truth.length);
   assert.deepEqual(result.poses[0].translation,[0,0,0]);
-  assert.ok(result.finalMedianError < result.initialMedianError,
-    `joint refinement should reduce error: ${result.initialMedianError} -> ${result.finalMedianError}`);
+  assert.ok(result.finalMeanError < result.initialMeanError,
+    `joint refinement should reduce mean error: ${result.initialMeanError} -> ${result.finalMeanError}`);
   assert.ok(result.poses[1].translation.every(Number.isFinite));
 });

@@ -81,14 +81,16 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
     if(finite3(point))landmarks.push({track,views,point});
   }
   const initialCount=landmarks.length;
-  if(!initialCount)return {status:"insufficient-tracks",poses,landmarks:[],initialMedianError:null,finalMedianError:null,optimizedTracks:0,iterations:0,rotationsOptimized:false,scaleKnown:false};
+  if(!initialCount)return {status:"insufficient-tracks",poses,landmarks:[],initialMedianError:null,finalMedianError:null,initialMeanError:null,finalMeanError:null,optimizedTracks:0,iterations:0,rotationsOptimized:false,scaleKnown:false};
   const errors=()=>landmarks.flatMap(l=>l.views.map(v=>{
     const p=map.get(l.track.componentId+":"+(l.track.fromPairIndex+l.views.indexOf(v)));
     const q=p&&projectPoint(projection(K,p.rotation,p.translation),l.point);
     return q?Math.hypot(q[0]-v.o.x,q[1]-v.o.y):NaN;
   })).filter(Number.isFinite).sort((a,b)=>a-b);
   const med=a=>a.length?(a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2):null;
-  const initialMedianError=med(errors());
+  const initialErrors=errors();
+  const initialMedianError=med(initialErrors);
+  const initialMeanError=initialErrors.length?initialErrors.reduce((a,b)=>a+b,0)/initialErrors.length:null;
   for(let iter=0;iter<iterations;iter++){
     map=poseMap();
     for(const l of landmarks){
@@ -113,8 +115,9 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
   }
   map=poseMap();
   const finalErrors=errors();
+  const finalMeanError=finalErrors.length?finalErrors.reduce((a,b)=>a+b,0)/finalErrors.length:null;
   return {status:"experimental-translation-landmark-bundle-adjustment",poses,landmarks:landmarks.map(l=>({componentId:l.track.componentId,fromPairIndex:l.track.fromPairIndex,position:l.point,observations:l.views.length})),
-    initialMedianError,finalMedianError:med(finalErrors),optimizedTracks:landmarks.length,iterations,
+    initialMedianError,finalMedianError:med(finalErrors),initialMeanError,finalMeanError,optimizedTracks:landmarks.length,iterations,
     rotationOptimization:false, intrinsicsOptimized:false,scaleKnown:false,
     limitation:"Experimental block-coordinate bundle adjustment: rotations and intrinsics fixed, first pose per component anchored, monocular scale remains arbitrary. Residuals use the same observations used for fitting; validate on held-out observations before claiming accuracy."};
 }
