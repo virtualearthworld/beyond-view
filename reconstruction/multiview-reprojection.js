@@ -106,9 +106,9 @@ export function evaluateMultiViewReprojection(tracks, trajectory, K, {
     heldOutObservations,
     heldOutMedianReprojectionErrorPixels: median(heldOutErrors),
     heldOutP95ReprojectionErrorPixels: heldOutP95,
-    heldOutPolicy: "Interior observations are excluded from first/last-view triangulation and reported separately; tracks with fewer than three observations have no held-out views.",
+    heldOutPolicy: "Interior observations are excluded from endpoint triangulation and reported separately. Camera poses may still have been estimated or optimized using the same video observations, so this is not an independent camera-pose holdout.",
     calibrationAssumed: true,
     metricScaleKnown: false,
-    limitation: "This is a track-based diagnostic using the supplied camera path and assumed intrinsics. It is not bundle adjustment or independent ground-truth accuracy; first/last-view triangulation and all-view reprojection use the same observations."
+    limitation: "This is a track-based diagnostic using the supplied camera path and assumed intrinsics. Interior views are held out only from endpoint landmark triangulation; camera poses may still depend on the same video observations. It is not independent camera-pose validation or ground-truth accuracy."
   };
 }
