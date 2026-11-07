@@ -67,3 +67,29 @@ test("bundle adjustment corrects a perturbed middle camera using multiple landma
     `joint refinement should reduce mean error: ${result.initialMeanError} -> ${result.finalMeanError}`);
   assert.ok(result.poses[1].translation.every(Number.isFinite));
 });
+
+test("bundle adjustment reduces reprojection error from a perturbed middle-camera rotation", () => {
+  const truth = [
+    [0.1,0.1,4], [-0.5,0.2,5], [0.7,-0.3,6], [0.3,0.5,7],
+    [-0.8,-0.2,5.5], [0.9,0.4,8], [-0.2,0.6,4.5], [0.5,-0.6,6.5]
+  ];
+  const translations = [[0,0,0],[-1,0,0],[-2,0,0]];
+  const project = (point, t) => [
+    100 * (point[0] + t[0]) / (point[2] + t[2]) + 50,
+    100 * (point[1] + t[1]) / (point[2] + t[2]) + 50
+  ];
+  const rotationTracks = truth.map(point => ({
+    componentId:0, fromPairIndex:0,
+    observations:translations.map(t=>{const [x,y]=project(point,t);return {x,y};})
+  }));
+  const angle=0.06, c=Math.cos(angle), sn=Math.sin(angle);
+  const perturbed=[[c,0,sn],[0,1,0],[-sn,0,c]];
+  const result=optimizeBundleAdjustment(rotationTracks,{poses:[
+    {frame:0,status:"estimated",componentId:0,rotation:I,translation:[0,0,0]},
+    {frame:1,status:"estimated",componentId:0,rotation:perturbed,translation:[-1,0,0]},
+    {frame:2,status:"estimated",componentId:0,rotation:I,translation:[-2,0,0]}
+  ]},K,{maxTracks:100,iterations:5,minObservations:3});
+  assert.ok(result.finalMeanError < result.initialMeanError,
+    `rotation refinement should reduce mean reprojection error: ${result.initialMeanError} -> ${result.finalMeanError}`);
+  assert.ok(Math.abs(result.poses[1].rotation[0][2]) < Math.abs(perturbed[0][2]));
+});
