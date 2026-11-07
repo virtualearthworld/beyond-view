@@ -8,7 +8,7 @@ const solve3 = (A,b) => {
     if(Math.abs(m[p][c])<1e-10) return null;
     [m[c],m[p]]=[m[p],m[c]];
     const d=m[c][c]; for(let j=c;j<4;j++)m[c][j]/=d;
-    for(let r=0;r<3;r++) if(r!==c){const f=m[r][c];for(let j=c;j<4;j++)m[r][j]-=f*m[c][j];}
+    for(let r=0;r<3;r++) if(r!==c){const f=m[r][c];for(let j=0;j<4;j++)m[r][j]-=f*m[c][j];}
   }
   return m.map(r=>r[3]);
 };
@@ -66,7 +66,8 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
      !Number.isInteger(iterations)||iterations<1||iterations>10||
      !Number.isInteger(minObservations)||minObservations<2)
     throw new TypeError("Invalid bundle-adjustment inputs.");
-  const poses=trajectory.poses.map(p=>({...p,translation:finite3(p.translation)?p.translation.slice():p.translation}));
+  // Normalize signed zero so the anchored origin is represented consistently.
+  const poses=trajectory.poses.map(p=>({...p,translation:finite3(p.translation)?p.translation.map(v=>v===0?0:v):p.translation}));
   const poseMap=()=>new Map(poses.filter(p=>p.status==="estimated"&&Number.isInteger(p.frame)&&Number.isInteger(p.componentId)&&finite3(p.translation))
     .map(p=>[p.componentId+":"+p.frame,p]));
   let map=poseMap(), landmarks=[];
