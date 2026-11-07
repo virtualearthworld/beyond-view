@@ -20,6 +20,11 @@ test("bundle adjustment retains a consistent measured landmark and anchored firs
   assert.equal(result.scaleKnown,false);
 });
 
+test("rejects invalid minimum observation counts",()=>{
+  assert.throws(()=>optimizeBundleAdjustment(tracks,trajectory,K,{minObservations:1}),/Invalid bundle-adjustment inputs/);
+  assert.throws(()=>optimizeBundleAdjustment(tracks,trajectory,K,{minObservations:2.5}),/Invalid bundle-adjustment inputs/);
+});
+
 test("reports insufficient tracks without fabricating reprojection metrics",()=>{
   const result=optimizeBundleAdjustment([],trajectory,K);
   assert.equal(result.status,"insufficient-tracks");
