@@ -38,4 +38,5 @@ test("reports interior observations separately from first/last-view triangulatio
   assert.equal(result.heldOutObservations,3);
   assert.ok(result.heldOutMedianReprojectionErrorPixels < 1e-5);
   assert.ok(result.heldOutP95ReprojectionErrorPixels < 1e-5);
+  assert.match(result.heldOutPolicy,/not an independent camera-pose holdout/);
 });
