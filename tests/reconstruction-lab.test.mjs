@@ -11,6 +11,12 @@ assert.match(html, /globally aligned or metric 3D reconstruction/);
 assert.match(html, /featureSets\[0\]\.length/);
 assert.match(html, /estimateCameraTrajectory/);
 assert.match(html, /reconstructSparseTrajectory/);
+assert.match(html, /reconstructMultiViewLandmarks/);
+assert.match(html, /multiViewTracks=pairTracks\.length>=2/);
+assert.match(html, /minimumObservations:3,minimumTriangulationAngleDegrees:2/);
+assert.match(html, /id="multi-view-landmark-count"/);
+assert.match(html, /id="multi-view-landmark-rejections"/);
+
 assert.match(html, /projectSparseCloud/);
 assert.match(html, /persistent-trajectories/);
 assert.match(html, /track-coverage/);
