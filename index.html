@@ -57,7 +57,7 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <section class="panel" aria-labelledby="main-title">
 <div class="eyebrow">Beyond View · Main workspace</div>
 <h1 id="main-title">Turn a video into a 3D scene.</h1>
-<p>Our focus is video-to-3D reconstruction. Open the reconstruction engine to process a suitable orbit video into an explorable 3D scene. You can preview a video here, but selecting it here does not send it into the engine automatically.</p>
+<p>Choose a video here, then send that same local file directly to the reconstruction engine. The handoff stays in your browser; the video is not uploaded to a Beyond View server.</p>
 <div class="actions">
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
@@ -154,14 +154,25 @@ input.addEventListener("change",()=>{
   fileInfo.textContent="Selected: "+file.name+" · "+(file.size/(1024*1024)).toFixed(1)+" MB · Stored only in this browser session";
   clear.hidden=false;
   note.className="status good";
-  note.textContent="Video selected for local preview. You can extract image frames on this device or open the 3D reconstruction workspace.";
+  note.textContent="Video selected for local preview. Use ‘Open video-to-3D engine’ to pass this exact file into the engine in a new tab. Keep this tab open until the engine finishes importing it.";
   prepareFrames.disabled=false;
   frameStatus.textContent="Ready to extract frames from "+file.name+".";
 });
 
 
 document.getElementById("open-engine").addEventListener("click",()=>{
-  window.location.href="./immersive-engine/index.html";
+  const engineUrl=new URL("./immersive-engine/index.html",window.location.href);
+  if(objectUrl) engineUrl.searchParams.set("video",objectUrl);
+  const engineTab=window.open(engineUrl.href,"_blank","noopener,noreferrer");
+  if(engineTab){
+    note.className="status good";
+    note.textContent=objectUrl
+      ?"Your selected video was handed to the reconstruction engine in a new tab. Keep this tab open until the engine finishes importing the video."
+      :"The reconstruction engine opened in a new tab. Choose your video there to begin.";
+  }else{
+    note.className="status";
+    note.textContent="Your browser blocked the new tab. Allow pop-ups for this site, then choose Open video-to-3D engine again. Your selected video is still here.";
+  }
 });
 prepareFrames.addEventListener("click",async()=>{
   if(!selectedFile){frameStatus.textContent="Choose a video first.";return;}

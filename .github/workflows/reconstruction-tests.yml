@@ -64,3 +64,5 @@ jobs:
         run: node --experimental-default-type=module --test tests/trajectory-reconstruction.test.mjs
       - name: Test 19 tests/two-view-pipeline.test.mjs
         run: node --experimental-default-type=module --test tests/two-view-pipeline.test.mjs
+      - name: Test 20 tests/video-handoff.test.mjs
+        run: node --experimental-default-type=module --test tests/video-handoff.test.mjs
