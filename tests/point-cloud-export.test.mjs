@@ -5,7 +5,7 @@ const ply = componentToAsciiPly({ componentId: 2, points: [
   { position: [1, 2, 3], support: 4, meanReprojectionError: 0.25 },
   { position: [-1, 0, 2.5], support: 1, meanReprojectionError: null }
 ] });
-assert.match(ply, /^ply\\nformat ascii 1\\.0\\n/);
+assert.match(ply, /^ply\nformat ascii 1\\.0\n/);
 assert.match(ply, /comment monocular_scale_unknown true/);
 assert.match(ply, /element vertex 2/);
 assert.match(ply, /1 2 3 4 0\\.25/);
