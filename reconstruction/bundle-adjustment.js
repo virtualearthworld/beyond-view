@@ -63,7 +63,8 @@ export function optimizeBundleAdjustment(tracks, trajectory, K, {
 }={}) {
   if(!Array.isArray(tracks)||!trajectory||!Array.isArray(trajectory.poses)||
      !Array.isArray(K)||K.length!==3||!Number.isInteger(maxTracks)||maxTracks<1||
-     !Number.isInteger(iterations)||iterations<1||iterations>10)
+     !Number.isInteger(iterations)||iterations<1||iterations>10||
+     !Number.isInteger(minObservations)||minObservations<2)
     throw new TypeError("Invalid bundle-adjustment inputs.");
   const poses=trajectory.poses.map(p=>({...p,translation:finite3(p.translation)?p.translation.slice():p.translation}));
   const poseMap=()=>new Map(poses.filter(p=>p.status==="estimated"&&Number.isInteger(p.frame)&&Number.isInteger(p.componentId)&&finite3(p.translation))
