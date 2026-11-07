@@ -267,9 +267,10 @@ export function summarizeParallax(frameA, frameB, tracks) {
 
 
 /**
- * Link adjacent-frame correspondences into short multi-frame trajectories.
- * Matching is based only on observed image coordinates; this does not imply
- * stable 3D identity when an object is occluded or a patch match is wrong.
+ * Link adjacent-frame correspondences into multi-frame trajectories.
+ * Tracks may begin after the first pair. A missed correspondence ends that
+ * trajectory; a later observation starts a new one rather than fabricating
+ * continuity across an occlusion or tracking failure.
  */
 export function linkTrackSequences(pairwiseTracks, {
   joinTolerancePixels = 3,
@@ -281,15 +282,22 @@ export function linkTrackSequences(pairwiseTracks, {
     throw new TypeError("Invalid track-sequence options.");
   }
   if (pairwiseTracks.length === 0) return [];
-  let trajectories = pairwiseTracks[0]
-    .filter(t => t?.from && t?.to &&
-      [t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite))
-    .map(t => ({ observations: [{...t.from},{...t.to}], patchErrors: [t.patchError].filter(Number.isFinite) }));
-  for (let pairIndex = 1; pairIndex < pairwiseTracks.length; pairIndex++) {
-    const nextTracks = pairwiseTracks[pairIndex].filter(t => t?.from && t?.to &&
-      [t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite));
+  const validTracks = pair => (Array.isArray(pair) ? pair : []).filter(t =>
+    t?.from && t?.to &&
+    [t.from.x,t.from.y,t.to.x,t.to.y].every(Number.isFinite)
+  );
+  const startTrajectory = (track, pairIndex) => ({
+    observations: [{...track.from},{...track.to}],
+    patchErrors: Number.isFinite(track.patchError) ? [track.patchError] : [],
+    fromPairIndex: pairIndex,
+    toPairIndex: pairIndex
+  });
+  let active = [];
+  const completed = [];
+  for (let pairIndex = 0; pairIndex < pairwiseTracks.length; pairIndex++) {
+    const nextTracks = validTracks(pairwiseTracks[pairIndex]);
     const candidates = [];
-    trajectories.forEach((trajectory, ti) => {
+    active.forEach((trajectory, ti) => {
       const last = trajectory.observations[trajectory.observations.length - 1];
       nextTracks.forEach((track, ni) => {
         const error = Math.hypot(last.x-track.from.x,last.y-track.from.y);
@@ -301,19 +309,30 @@ export function linkTrackSequences(pairwiseTracks, {
     const joined = new Map();
     for (const candidate of candidates) {
       if (usedTrajectories.has(candidate.ti) || usedTracks.has(candidate.ni)) continue;
-      usedTrajectories.add(candidate.ti); usedTracks.add(candidate.ni);
-      joined.set(candidate.ti, nextTracks[candidate.ni]);
+      usedTrajectories.add(candidate.ti);
+      usedTracks.add(candidate.ni);
+      joined.set(candidate.ti,nextTracks[candidate.ni]);
     }
-    trajectories = trajectories.flatMap((trajectory,index)=>{
+    const nextActive = [];
+    active.forEach((trajectory,index) => {
       const track = joined.get(index);
-      if (!track) return [];
-      return [{
-        observations: [...trajectory.observations,{...track.to}],
-        patchErrors: [...trajectory.patchErrors,...(Number.isFinite(track.patchError)?[track.patchError]:[])]
-      }];
+      if (!track) {
+        completed.push(trajectory);
+        return;
+      }
+      nextActive.push({
+        ...trajectory,
+        observations:[...trajectory.observations,{...track.to}],
+        patchErrors:[...trajectory.patchErrors,...(Number.isFinite(track.patchError)?[track.patchError]:[])],
+        toPairIndex:pairIndex
+      });
     });
+    nextTracks.forEach((track,index) => {
+      if (!usedTracks.has(index)) nextActive.push(startTrajectory(track,pairIndex));
+    });
+    active=nextActive;
   }
-  return trajectories.filter(t=>t.observations.length>=minObservations);
+  return [...completed,...active].filter(t=>t.observations.length>=minObservations);
 }
 
 
@@ -343,8 +362,8 @@ export function linkTrackSequencesByComponent(pairwiseTracks, pairComponentIds, 
       output.push({
         ...trajectory,
         componentId,
-        fromPairIndex: start,
-        toPairIndex: end - 1
+        fromPairIndex: start + trajectory.fromPairIndex,
+        toPairIndex: start + trajectory.toPairIndex
       });
     }
     start = end;

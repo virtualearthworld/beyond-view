@@ -126,6 +126,18 @@ assert.deepEqual(trajectories[0].observations[0], {x:10,y:10});
 assert.deepEqual(trajectories[0].observations[3], {x:18,y:13});
 assert.equal(linkTrackSequences([], {}).length, 0, "empty frame sequences should return no trajectories");
 assert.throws(()=>linkTrackSequences([], {joinTolerancePixels:-1}), /Invalid track-sequence options/);
+// A feature track that first becomes visible in a later frame must still
+// enter the landmark set; the linker must not require it to exist in pair 0.
+const lateTrack = linkTrackSequences([
+  pair01.slice(0,1),
+  [{from:{x:200,y:100},to:{x:202,y:101},patchError:1}],
+  [{from:{x:202.5,y:101},to:{x:205,y:102},patchError:1}],
+  [{from:{x:205,y:102},to:{x:208,y:103},patchError:1}]
+],{joinTolerancePixels:1,minObservations:4});
+assert.equal(lateTrack.length,1,"a landmark first seen in a later pair should be retained");
+assert.equal(lateTrack[0].fromPairIndex,1);
+assert.equal(lateTrack[0].toPairIndex,3);
+assert.deepEqual(lateTrack[0].observations[0],{x:200,y:100});
 console.log("multi-frame trajectory linking tests passed");
 
 const { linkTrackSequencesByComponent } = await import("../reconstruction/sparse-reconstruction.js");
