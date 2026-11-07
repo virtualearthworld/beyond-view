@@ -28,7 +28,8 @@ function projectionMatrix(K, R, t) {
  * Triangulate independently in each estimated adjacent-frame coordinate
  * system. These are local pairwise point clouds, not yet a fused world model.
  * Failed poses remain empty; points must pass positive-depth and reprojection
- * checks in both views.
+ * checks in both views. Points below the minimum triangulation angle are
+ * counted as weak-parallax candidates but excluded from the stable sparse cloud.
  */
 export function reconstructSparseTrajectory(framePairs, trajectory, K, {
   maxReprojectionError = 2,
@@ -70,7 +71,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
     const cameraCenter2 = applyTranspose(pose.rotation, pose.translationDirection.map(value => -value));
     const points = [];
     const diagnostics = { inputTracks: pair.tracks.length, invalidTracks: 0, triangulationFailures: 0,
-      negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, lowParallax: 0, accepted: 0 };
+      negativeDepth: 0, projectionFailures: 0, reprojectionRejected: 0, lowParallax: 0, lowParallaxRejected: 0, accepted: 0 };
     const cameraDepth = (P, point) => P[8] * point[0] + P[9] * point[1] + P[10] * point[2] + P[11];
     for (const track of pair.tracks) {
       if (!validTrack(track)) { diagnostics.invalidTracks++; continue; }
@@ -91,7 +92,11 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
         ? ray1.reduce((sum, value, axis) => sum + value * ray2[axis], 0) / (norm1 * norm2)
         : 1;
       const triangulationAngleDegrees = Math.acos(Math.max(-1, Math.min(1, cosine))) * 180 / Math.PI;
-      if (triangulationAngleDegrees < minimumTriangulationAngleDegrees) diagnostics.lowParallax++;
+      if (triangulationAngleDegrees < minimumTriangulationAngleDegrees) {
+        diagnostics.lowParallax++;
+        diagnostics.lowParallaxRejected++;
+        continue;
+      }
       points.push({ position: point, reprojectionError, triangulationAngleDegrees, observations: 2, depth1, depth2 });
       diagnostics.accepted++;
     }
@@ -131,6 +136,7 @@ export function reconstructSparseTrajectory(framePairs, trajectory, K, {
     medianTriangulationAngleDegrees: angles.length ? angles[Math.floor(angles.length / 2)] : null,
     minimumTriangulationAngleDegrees,
     lowParallaxPointCount: segments.reduce((sum, segment) => sum + (segment.diagnostics?.lowParallax || 0), 0),
+    rejectedLowParallaxPointCount: segments.reduce((sum, segment) => sum + (segment.diagnostics?.lowParallaxRejected || 0), 0),
     scaleKnown: false,
     fusedWorldModel: false,
     limitation: "Points are triangulated per frame pair in local coordinates. Verified calibration, scale recovery, trajectory optimization, and multi-frame point fusion are still required for a consistent world reconstruction."

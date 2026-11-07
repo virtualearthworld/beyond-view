@@ -31,7 +31,7 @@ The clip includes people in the foreground, with waterfront/skyline and water be
 
 ## Current implementation
 
-- First-party browser Reconstruction Lab: frame sampling, feature tracking, dominant motion and homography diagnostics, multi-frame track linking, relative camera pose estimation, translation-path regularization, experimental landmark/translation bundle adjustment, sparse triangulation, point-cloud fusion, reprojection diagnostics, and PLY export.
+- First-party browser Reconstruction Lab: frame sampling, feature tracking, dominant motion and homography diagnostics, multi-frame track linking, relative camera pose estimation, translation-path regularization, experimental landmark/translation bundle adjustment, sparse triangulation, point-cloud fusion, reprojection diagnostics, and PLY export. Weak-parallax points below the configured minimum triangulation angle are counted and excluded from the stable sparse cloud.
 - Main workspace now hands the exact selected local video to Reconstruction Lab in a new tab using a browser-local Blob URL.
 - The lab automatically imports that video and starts analysis.
 - The original tab must remain open until the lab finishes reading the local Blob URL.
@@ -40,7 +40,7 @@ The clip includes people in the foreground, with waterfront/skyline and water be
 ## What is not yet proven
 
 - A stable globally aligned camera trajectory for the complete clip.
-- Accurate or metric depth.
+- Accurate or metric depth. The lab now excludes low-parallax points from the stable sparse cloud, but the remaining depth is still provisional.
 - A coherent, recognizable full-scene point cloud.
 - A textured mesh or Gaussian-splat scene generated from this exact clip.
 - A collision-aware or freely walkable 3D environment.
