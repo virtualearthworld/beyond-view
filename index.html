@@ -155,7 +155,7 @@ input.addEventListener("change",()=>{
   fileInfo.textContent="Selected: "+file.name+" · "+(file.size/(1024*1024)).toFixed(1)+" MB · Stored only in this browser session";
   clear.hidden=false;
   note.className="status good";
-  note.textContent="Video selected for local preview. Use ‘Open video-to-3D engine’ to pass this exact file into the engine in a new tab. Keep this tab open until the engine finishes importing it.";
+  note.textContent="Video selected for local preview. Use ‘Analyze this video in Reconstruction Lab’ to pass this exact file into the first-party lab in a new tab. Keep this tab open until the lab finishes importing it.";
   prepareFrames.disabled=false;
   frameStatus.textContent="Ready to extract frames from "+file.name+".";
 });

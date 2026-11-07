@@ -10,7 +10,7 @@ The main workspace hands the selected local video to the first-party [Reconstruc
 
 ## First real-video test
 
-Use a short, steady orbit recording of a mostly stationary object or person. Move the camera around the subject rather than asking the subject to move; keep the subject visible, overlap adjacent viewpoints, use even lighting and textured surfaces, and avoid cuts, fast pans, zooms and motion blur. Open Beyond View in desktop Chrome or Edge with WebGPU, choose the MP4/MOV file, then select **Open video-to-3D engine**. Keep the original tab open while the engine imports its local browser file. In the engine, inspect the extracted frames, run camera-pose estimation, then Gaussian-splat training and review the 3D result. Export a `.sog`, `.ply` or `.glb` if the run succeeds. Record browser, GPU/device, video duration/resolution, processing time, pose success and visual defects. This is the validation needed before claiming reliable video-to-3D conversion. The engine is an open-source orbit-reconstruction component, not yet Beyond View's own general-purpose video reconstruction model.
+Use a short, steady orbit recording of a mostly stationary object or person. Move the camera around the subject rather than asking the subject to move; keep the subject visible, overlap adjacent viewpoints, use even lighting and textured surfaces, and avoid cuts, fast pans, zooms and motion blur. Open Beyond View in desktop Chrome or Edge with WebGPU, choose the MP4/MOV file, then select **Analyze this video in Reconstruction Lab**. Keep the original tab open while the lab imports its local browser file. The lab samples the clip at 0.5-second intervals (up to 48 frames), measures adjacent-frame feature tracks, estimates relative camera motion, links longer-lived tracks, and evaluates provisional sparse geometry. Review weak-parallax warnings, camera-pose gaps, connected components, and reprojection diagnostics. Export the fused sparse PLY only as a provisional geometry diagnostic; it is not a complete scene. Record browser, GPU/device, video duration/resolution, processing time, pose success and visual defects. This is the validation needed before claiming reliable video-to-3D conversion. The engine is an open-source orbit-reconstruction component, not yet Beyond View's own general-purpose video reconstruction model.
 
 ## First-party reconstruction lab (development diagnostics)
 
@@ -20,7 +20,7 @@ The first-party lab remains a separate measurement and validation tool. Its rela
 
 ## Current prototype
 
-- `index.html`: responsive main workspace with local video preview and direct local-file handoff to the reconstruction engine.
+- `index.html`: responsive main workspace with local video preview and direct local-file handoff to the first-party Reconstruction Lab.
 - Video preview and engine handoff run in the browser; selecting a file does **not** upload it to a Beyond View server.
 - **ENTER 3D** opens an interactive sample Gaussian Splatting environment using Three.js and Spark.
 - The sample scene is loaded from Spark's hosted demo asset endpoint; it is **not generated from the selected video**.
@@ -46,8 +46,8 @@ The first-party lab remains a separate measurement and validation tool. Its rela
 
 1. Verify the browser interface and local video playback.
 2. Publish the static prototype using GitHub Pages.
-3. Connect the selected local video to the browser reconstruction engine. **The direct handoff is now implemented; live browser verification remains.**
-4. Run a real capture through camera estimation and Gaussian-splat training; record device, runtime and reconstruction quality.
+3. Connect the selected local video to the first-party Reconstruction Lab. **The direct handoff and automatic local import are implemented; live browser verification on the original clip remains.**
+4. Validate persistent tracks, camera-pose continuity, parallax-conditioned depth, and sparse geometry on the original waterfront video before attempting dense scene appearance reconstruction.
 5. Connect completed scene packages to their source videos and add durable scene storage.
 6. Add a viewer/feed experience, with movement limited to geometry actually supported by the reconstruction.
 
@@ -59,7 +59,7 @@ An interactive Gaussian Splatting viewer is not the same as a fully navigable, c
 
 ## Run locally
 
-Open `index.html` in a modern browser served from a local web server. Internet access is required for the CDN modules and demo 3D asset. Use **Choose a video** to preview a video file stored on your device, then choose **Open video-to-3D engine**. The engine opens in a new tab and imports the selected file from the original tab's local Blob URL; keep the original tab open until import finishes. The file is not uploaded to a Beyond View server.
+Open `index.html` in a modern browser served from a local web server. Internet access is required for the CDN modules and demo 3D asset. Use **Choose a video** to preview a video file stored on your device, then choose **Analyze this video in Reconstruction Lab**. The lab opens in a new tab and imports the selected file from the original tab's local Blob URL; keep the original tab open until import and analysis finish. The file is not uploaded to a Beyond View server.
 
 ## Status
 
