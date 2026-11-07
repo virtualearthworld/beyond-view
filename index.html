@@ -163,8 +163,9 @@ input.addEventListener("change",()=>{
 document.getElementById("open-engine").addEventListener("click",()=>{
   const engineUrl=new URL("./immersive-engine/index.html",window.location.href);
   if(objectUrl) engineUrl.searchParams.set("video",objectUrl);
-  const engineTab=window.open(engineUrl.href,"_blank","noopener,noreferrer");
+  const engineTab=window.open(engineUrl.href,"_blank");
   if(engineTab){
+    engineTab.opener=null;
     note.className="status good";
     note.textContent=objectUrl
       ?"Your selected video was handed to the reconstruction engine in a new tab. Keep this tab open until the engine finishes importing the video."
