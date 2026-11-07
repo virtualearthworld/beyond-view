@@ -205,11 +205,14 @@ export function reconstructMultiViewLandmarks(framePairs, linkedTracks, trajecto
         track.fromPairIndex < 0) continue;
     const observationRecords = [];
     for (let offset = 0; offset < track.observations.length; offset++) {
-      const pair = framePairs[track.fromPairIndex + offset];
+      const pair = offset === 0
+        ? framePairs[track.fromPairIndex]
+        : framePairs[track.fromPairIndex + offset - 1];
       const observation = track.observations[offset];
       if (!pair || !observation || !Number.isFinite(observation.x) || !Number.isFinite(observation.y)) continue;
-      const frame = offset === 0 ? (pair.fromFrame ?? track.fromPairIndex + offset)
-        : (framePairs[track.fromPairIndex + offset - 1]?.toFrame ?? track.fromPairIndex + offset);
+      const frame = offset === 0
+        ? (pair.fromFrame ?? track.fromPairIndex)
+        : (pair.toFrame ?? track.fromPairIndex + offset);
       const pose = poseMap.get(track.componentId + ":" + frame);
       if (!pose) continue;
       observationRecords.push({ frame, observation: [observation.x, observation.y], pose });
