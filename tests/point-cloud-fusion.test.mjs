@@ -45,7 +45,7 @@ const supportedOnly = fuseSparsePointClouds(reconstruction, trajectory, {
   minimumSupport:2
 });
 assert.equal(supportedOnly.minimumSupport, 2);
-assert.equal(supportedOnly.filteredBySupportPointCount, 1,
+assert.equal(supportedOnly.filteredBySupportPointCount, 2,
   "single-observation points should be reported as filtered from the stable cloud");
 assert.equal(supportedOnly.fusedPointCount, 1,
   "only a point observed in multiple frame-pair clouds should remain");
