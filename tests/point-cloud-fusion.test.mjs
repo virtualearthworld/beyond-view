@@ -33,6 +33,31 @@ assert.equal(result.fusedPointCount, 3, "only nearby points in the same componen
 assert.equal(result.acceptedObservations, 4);
 assert.equal(result.scaleKnown, false);
 assert.equal(result.metricGeometry, false);
+
+// Duplicate detections inside one frame-pair cloud must not count as
+// independent multi-view support, even when they fall inside merge distance.
+const duplicateOnly = {
+  segments:[{fromFrame:0,status:"sparse-points-estimated",points:[
+    {position:[0,0,5],reprojectionError:0.1},
+    {position:[0.001,0,5],reprojectionError:0.1}
+  ]}],
+};
+const onePose = {
+  segments:[{status:"estimated",componentId:0,fromFrame:0}],
+  poses:[{frame:0,status:"estimated",rotation:I,translation:[0,0,0]}]
+};
+const noFalseSupport = fuseSparsePointClouds(duplicateOnly,onePose,{
+  mergeDistance:0.02,minimumSupport:2
+});
+assert.equal(noFalseSupport.acceptedObservations,2);
+assert.equal(noFalseSupport.filteredBySupportPointCount,2,
+  "same-pair detections must remain separate and both fail multi-pair support");
+assert.equal(noFalseSupport.fusedPointCount,0);
+const duplicatePreserved = fuseSparsePointClouds(duplicateOnly,onePose,{
+  mergeDistance:0.02,minimumSupport:1
+});
+assert.equal(duplicatePreserved.fusedPointCount,2,
+  "nearby points from one pair must not merge into false support");
 const connected = result.components.find(c => c.componentId === 0);
 assert.equal(connected.pointCount, 2);
 assert.equal(connected.points[0].support, 2);

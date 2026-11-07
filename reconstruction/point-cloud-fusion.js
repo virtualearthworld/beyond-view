@@ -72,7 +72,10 @@ export function fuseSparsePointClouds(reconstruction, trajectory, {
 
       let match = null;
       for (const candidate of fused) {
-        if (distance(candidate.position, position) <= mergeDistance) {
+        // Support must come from distinct frame-pair clouds. Two nearby
+        // detections in one pair cannot manufacture multi-view confirmation.
+        if (!candidate.sourceSegments.has(i) &&
+            distance(candidate.position, position) <= mergeDistance) {
           match = candidate;
           break;
         }
