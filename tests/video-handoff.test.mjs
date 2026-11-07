@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const lab = await readFile(new URL("../reconstruction-lab.html", import.meta.url), "utf8");
 assert.match(html, /new URL\("\.\/immersive-engine\/index\.html",window\.location\.href\)/,
   "the main workspace must launch the in-repository reconstruction engine");
 assert.match(html, /engineUrl\.searchParams\.set\("video",objectUrl\)/,
@@ -16,5 +17,15 @@ assert.match(html, /not uploaded to a Beyond View server/,
   "the privacy statement must accurately describe the local browser handoff");
 console.log("video-to-engine handoff integration tests passed");
 
-assert.match(html, /orbit (videos|footage)[\s\S]*mostly stationary subject/i, "the homepage must state the current orbit-video input requirement");
-assert.match(html, /desktop Chrome or Edge with WebGPU/i, "the homepage must state the tested browser and GPU requirement");
+assert.match(html, /Analyze this video in Reconstruction Lab/,
+  "the main workspace must provide a direct handoff to the first-party lab");
+assert.match(html, /labUrl\.searchParams\.set\("video",objectUrl\)/,
+  "the exact selected local video must be passed into the lab");
+assert.match(lab, /new URLSearchParams\(window\.location\.search\)\.get\("video"\)/,
+  "the lab must accept the selected video URL");
+assert.match(lab, /sharedVideoUrl\.startsWith\("blob:"\)/,
+  "the lab must restrict automatic import to a browser-local video URL");
+assert.match(lab, /run\.click\(\)/,
+  "the lab must start analysis automatically after the video loads");
+assert.match(html, /same original waterfront video/,
+  "the homepage must explicitly preserve the user's original-video requirement");

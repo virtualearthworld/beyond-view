@@ -122,6 +122,24 @@ picker.addEventListener("change",()=>{
   };
   video.onerror=()=>{status.textContent="The browser could not decode this video format.";run.disabled=true;};
 });
+
+const sharedVideoUrl=new URLSearchParams(window.location.search).get("video");
+if(sharedVideoUrl && sharedVideoUrl.startsWith("blob:")){
+  status.textContent="Importing your original local video from the Beyond View workspace…";
+  video.src=sharedVideoUrl;
+  video.onloadedmetadata=()=>{
+    focalInput.value=String(Math.round(video.videoWidth*1.2));
+    document.querySelector("#duration").textContent=video.duration.toFixed(1)+" s";
+    status.textContent="Original video imported. Starting the full local camera, track, and sparse-geometry analysis…";
+    run.disabled=false;
+    run.click();
+  };
+  video.onerror=()=>{
+    status.textContent="The original local video could not be read. Keep the Beyond View source tab open and try the handoff again.";
+    run.disabled=true;
+  };
+}
+
 function drawSparseCloud(points){
   cloudPoints=Array.isArray(points)?points:[];
   cloudCtx.clearRect(0,0,cloudCanvas.width,cloudCanvas.height);

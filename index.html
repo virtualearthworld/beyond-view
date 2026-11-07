@@ -57,28 +57,28 @@ footer{color:#7e899d;text-align:center;font-size:.82rem;margin-top:20px}
 <section class="panel" aria-labelledby="main-title">
 <div class="eyebrow">Beyond View · Main workspace</div>
 <h1 id="main-title">Turn a video into a 3D scene.</h1>
-<p>Choose a video here, then send that same local file directly to the reconstruction engine. The handoff stays in your browser; the video is not uploaded to a Beyond View server.</p>
+<p>We are validating Beyond View against your original waterfront video, not a new single-object sample. Choose that same video, then open the first-party Reconstruction Lab to analyze its real frames locally. The file stays in your browser and is not uploaded to a Beyond View server.</p>
 <div class="actions">
 <label class="file-label" for="video">Choose a video</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-describedby="file-help">
 <button id="prepare-frames" type="button" class="secondary" disabled>Prepare frames for 3D</button>
-<button id="open-engine" type="button">Open video-to-3D engine</button>
-<a class="file-label" href="./reconstruction-lab.html">Open Reconstruction Lab</a>
+<button id="open-lab" type="button" class="secondary">Analyze this video in Reconstruction Lab</button>
+<button id="open-engine" type="button">Open experimental 3DGS engine</button>
 <button id="clear" class="secondary" type="button" hidden>Remove video</button>
 </div>
-<p id="file-help" class="small">MP4 or MOV recommended. Important: the current engine is designed for orbit footage—camera moving around a mostly stationary subject—not arbitrary movies with cuts or a moving subject. Use desktop Chrome or Edge with WebGPU for the best chance of processing.</p>
+<p id="file-help" class="small">Choose the same original waterfront clip previously analyzed (IMG_1325(1).mov). The Reconstruction Lab will sample its frames, estimate camera motion, track the scene, and test sparse 3D geometry. No new video or single-object recording is required.</p>
 <div id="file-info" class="file-info" aria-live="polite"></div>
 <video id="player" controls playsinline preload="metadata"></video>
-<div id="note" class="status" role="status" aria-live="polite">Milestone: video-to-3D reconstruction. Open the engine below to select a video for processing. A successful result is a 3D scene, but not necessarily a complete collision-aware world you can walk anywhere in.</div>
+<div id="note" class="status" role="status" aria-live="polite">Next test: analyze the original waterfront video in the first-party Reconstruction Lab. Earlier offline checks found repeatable image correspondences and recoverable pairwise camera poses, but low-parallax regions remain a depth-quality warning. A verified full 3D scene has not yet been produced.</div>
 <div id="frame-panel" class="status" style="margin-top:12px">
 <strong>Optional: prepare frames</strong><p class="small" style="margin:6px 0 10px;color:inherit">Frame extraction is only a fallback input-preparation step. To attempt reconstruction, use the engine. Extract one image every <select id="frame-interval" aria-label="Frame extraction interval" style="background:#10131c;color:#fff;border:1px solid #566176;border-radius:8px;padding:5px"><option value="1">1 second</option><option value="2" selected>2 seconds</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select>. A ZIP of JPG frames will be saved to your device.</p>
 <div id="frame-status" class="small" aria-live="polite">Choose a video first.</div>
 </div>
 <div id="engine-panel" hidden style="margin-top:18px">
-<strong>Video-to-3D reconstruction engine</strong><p class="small">The current engine is specialized for orbit videos: move the camera steadily around a mostly stationary subject, with overlapping views and clear surface detail. It is not yet a general-purpose converter for every ordinary video. Use desktop Chrome or Edge with WebGPU. A Gaussian-splat scene is immersive, but does not guarantee unrestricted walking or collision-aware movement.</p><a class="file-label" href="./immersive-engine/index.html">Launch reconstruction engine</a>
+<strong>Experimental Gaussian-splat engine</strong><p class="small">This optional open-source engine is specialized for orbit-style footage and may not suit the original moving waterfront scene. Our primary test is the first-party Reconstruction Lab above, which preserves and analyzes the original clip. A Gaussian-splat scene is not automatically a collision-aware world with unrestricted walking.</p><a class="file-label" href="./immersive-engine/index.html">Launch reconstruction engine</a>
 </div>
 <details>
-<summary>Tips for recording a future 3D scene</summary>
+<summary>Future recording guidance (not needed for our current test)</summary>
 <ul class="guide">
 <li>Walk the camera slowly around a mostly stationary subject; avoid moving the subject.</li>
 <li>Keep the subject in view and overlap each new angle with the previous one.</li>
@@ -160,6 +160,26 @@ input.addEventListener("change",()=>{
   frameStatus.textContent="Ready to extract frames from "+file.name+".";
 });
 
+
+
+document.getElementById("open-lab").addEventListener("click",()=>{
+  if(!objectUrl){
+    note.className="status";
+    note.textContent="Choose the same original waterfront video first. The Reconstruction Lab will receive that exact local file; you do not need to record a new video.";
+    return;
+  }
+  const labUrl=new URL("./reconstruction-lab.html",window.location.href);
+  labUrl.searchParams.set("video",objectUrl);
+  const labTab=window.open(labUrl.href,"_blank");
+  if(labTab){
+    labTab.opener=null;
+    note.className="status good";
+    note.textContent="Your selected original video was passed to the first-party Reconstruction Lab. Analysis starts automatically. Keep this tab open until the lab has loaded the video and finished analysis.";
+  }else{
+    note.className="status";
+    note.textContent="Your browser blocked the new tab. Allow pop-ups for this site, then choose Analyze this video in Reconstruction Lab again.";
+  }
+});
 
 document.getElementById("open-engine").addEventListener("click",()=>{
   const engineUrl=new URL("./immersive-engine/index.html",window.location.href);

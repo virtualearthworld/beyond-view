@@ -6,11 +6,14 @@ on:
       - "reconstruction/**"
       - "tests/**"
       - "index.html"
+      - "reconstruction-lab.html"
       - ".github/workflows/reconstruction-tests.yml"
   pull_request:
     paths:
       - "reconstruction/**"
       - "tests/**"
+      - "index.html"
+      - "reconstruction-lab.html"
       - ".github/workflows/reconstruction-tests.yml"
   workflow_dispatch:
 
