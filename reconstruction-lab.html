@@ -70,7 +70,7 @@ small{color:var(--muted)}a{color:var(--accent)}
 <section class="panel">
 <h2>First sparse 3D point-cloud preview</h2>
 <p>This diagnostic view renders accepted points from the first frame pair that has enough valid 3D points. It is an exploratory projection of a pair-local cloud, not a fused or textured environment; orientation and scale are provisional.</p>
-<div class="actions" aria-label="3D point-cloud view controls"><button id="cloud-reset" type="button">Reset view</button><small>Drag to rotate · Scroll to zoom · Shift-drag to pan</small></div>
+<div class="actions" aria-label="3D point-cloud view controls"><button id="cloud-reset" type="button">Reset view</button><button id="export-ply" type="button" disabled>Export fused cloud (.ply)</button><small>Exports the largest connected component only; scale is unknown. Drag to rotate · Scroll to zoom · Shift-drag to pan</small></div>
 <canvas id="cloud-stage" width="640" height="360" tabindex="0" aria-label="Interactive sparse 3D point cloud preview. Drag to rotate, scroll to zoom, shift-drag to pan." style="width:100%;display:block;background:#080a10;border-radius:12px;touch-action:none;cursor:grab"></canvas>
 <small id="cloud-caption">Analyze a video to try the sparse point preview.</small>
 </section>
@@ -96,6 +96,7 @@ import { reconstructSparseTrajectory } from "./reconstruction/trajectory-reconst
 import { fuseSparsePointClouds } from "./reconstruction/point-cloud-fusion.js";
 import { projectSparseCloud } from "./reconstruction/sparse-cloud-view.js";
 import { analyzeCalibrationSensitivity } from "./reconstruction/calibration-sensitivity.js";
+import { componentToAsciiPly } from "./reconstruction/point-cloud-export.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -105,7 +106,7 @@ const canvas=document.querySelector("#stage");
 const ctx=canvas.getContext("2d");
 const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
-let url=null, cloudPoints=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
+let url=null, cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
 picker.addEventListener("change",()=>{
   if(url) URL.revokeObjectURL(url);
   const file=picker.files?.[0];
@@ -152,6 +153,14 @@ function endCloudDrag(){cloudDrag=null;cloudCanvas.style.cursor="grab";}
 cloudCanvas.addEventListener("pointerup",endCloudDrag);cloudCanvas.addEventListener("pointercancel",endCloudDrag);
 cloudCanvas.addEventListener("wheel",event=>{event.preventDefault();cloudZoom=Math.max(0.35,Math.min(5,cloudZoom*Math.exp(-event.deltaY*0.001)));drawSparseCloud(cloudPoints);},{passive:false});
 document.querySelector("#cloud-reset").addEventListener("click",()=>{cloudYaw=0.55;cloudPitch=-0.25;cloudZoom=1;cloudPanX=0;cloudPanY=0;drawSparseCloud(cloudPoints);});
+document.querySelector("#export-ply").addEventListener("click",()=>{
+  const component=fusedComponents.slice().sort((a,b)=>b.pointCount-a.pointCount)[0];
+  if(!component?.points?.length)return;
+  const blob=new Blob([componentToAsciiPly(component)],{type:"application/vnd.ply"});
+  const downloadUrl=URL.createObjectURL(blob);
+  const link=document.createElement("a");link.href=downloadUrl;link.download="beyond-view-component-"+component.componentId+".ply";link.click();
+  setTimeout(()=>URL.revokeObjectURL(downloadUrl),1000);
+});
 function drawPair(a,b,tracks){
   canvas.width=a.width;canvas.height=a.height;
   const image=ctx.createImageData(a.width,a.height);
@@ -213,6 +222,8 @@ run.addEventListener("click",async()=>{
     const rawReprojection=evaluateMultiViewReprojection(fullClipTrajectories,trajectory,K,{path:"raw"});
     const optimizedReprojection=evaluateMultiViewReprojection(fullClipTrajectories,trajectory,K,{path:"optimized"});
     const fusion=fuseSparsePointClouds(sparse,trajectory);
+    fusedComponents=fusion.components;
+    document.querySelector("#export-ply").disabled=!fusedComponents.some(component=>component.pointCount>0);
     const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
     drawSparseCloud(previewSegment?.points || []);
     const longestTrackFrames=fullClipTrajectories.reduce((max,t)=>Math.max(max,t.observations.length),0);
