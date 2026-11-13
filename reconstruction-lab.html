@@ -126,7 +126,7 @@ picker.addEventListener("change",()=>{
   if(url) URL.revokeObjectURL(url);
   const file=picker.files?.[0];
   if(!file){markVideoFailure("No video selected. Choose the original waterfront MOV file.");return;}
-  const looksLikeVideo=file.type.startsWith("video/") || /\\.(mov|mp4|m4v|webm)$/i.test(file.name);
+  const looksLikeVideo=file.type.startsWith("video/") || /\.(mov|mp4|m4v|webm)$/i.test(file.name);
   if(!looksLikeVideo){markVideoFailure("That file does not look like a supported video. Select the original MOV/MP4 video, not the frames ZIP.");return;}
   url=URL.createObjectURL(file);
   video.onloadedmetadata=()=>markVideoReady("Selected local file.");
