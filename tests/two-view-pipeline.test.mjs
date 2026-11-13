@@ -22,7 +22,7 @@ assert.equal(result.epipolarInlierTracks.length,result.epipolar.inlierCount);
 assert.equal(result.epipolarResidualTrackCount,points.length-result.epipolar.inlierCount);
 assert.ok(result.epipolarInlierTracks.every(track=>Number.isFinite(track.epipolarErrorPixels)));
 const inputKeys=new Set(points.map(track=>[track.from.x,track.from.y,track.to.x,track.to.y].join(",")));
-assert.ok(result.epipolarInlierTracks.every(track=>inputKeys.has([track.from.x,track.from.y,track.to.x,track.to.y].join(",")));
+assert.ok(result.epipolarInlierTracks.every(track=>inputKeys.has([track.from.x,track.from.y,track.to.x,track.to.y].join(","))));
 assert.equal(result.scaleKnown,false,"monocular two-view translation scale must remain explicitly unknown");
 assert.ok(result.status!=="two-view-pose-estimated" || result.pose,"successful status must include a selected pose");
 const weak=estimateTwoViewPose(points.slice(0,5),{K1:K});
