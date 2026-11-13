@@ -107,20 +107,38 @@ const ctx=canvas.getContext("2d");
 const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
 let url=null, cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
+let metadataTimer=null;
+function markVideoReady(sourceLabel){
+  if(metadataTimer){clearTimeout(metadataTimer);metadataTimer=null;}
+  focalInput.value=String(Math.round(video.videoWidth*1.2));
+  document.querySelector("#duration").textContent=Number.isFinite(video.duration)?video.duration.toFixed(1)+" s":"Duration unavailable";
+  status.className="good";
+  status.textContent=sourceLabel+" Video decoded ("+video.videoWidth+" × "+video.videoHeight+"). Analyze Frames is now enabled.";
+  run.disabled=false;
+}
+function markVideoFailure(message){
+  if(metadataTimer){clearTimeout(metadataTimer);metadataTimer=null;}
+  run.disabled=true;
+  status.className="";
+  status.textContent=message;
+}
 picker.addEventListener("change",()=>{
   if(url) URL.revokeObjectURL(url);
   const file=picker.files?.[0];
-  if(!file){run.disabled=true;return;}
-  if(!file.type.startsWith("video/")){status.textContent="Please choose a video file.";run.disabled=true;return;}
-  url=URL.createObjectURL(file);video.src=url;
-  status.className="";status.textContent="Loading selected video locally…";run.disabled=true;
-  video.onloadedmetadata=()=>{
-    focalInput.value=String(Math.round(video.videoWidth*1.2));
-    document.querySelector("#duration").textContent=video.duration.toFixed(1)+" s";
-    status.textContent="Video ready. Select Analyze frames to measure feature movement.";
-    run.disabled=false;
-  };
-  video.onerror=()=>{status.textContent="The browser could not decode this video format.";run.disabled=true;};
+  if(!file){markVideoFailure("No video selected. Choose the original waterfront MOV file.");return;}
+  const looksLikeVideo=file.type.startsWith("video/") || /\\.(mov|mp4|m4v|webm)$/i.test(file.name);
+  if(!looksLikeVideo){markVideoFailure("That file does not look like a supported video. Select the original MOV/MP4 video, not the frames ZIP.");return;}
+  url=URL.createObjectURL(file);
+  video.onloadedmetadata=()=>markVideoReady("Selected local file.");
+  video.onerror=()=>markVideoFailure("Safari could not decode this video. The file is selected ("+file.name+"), but its codec/container could not be read. Try opening the MOV in Safari first to confirm it plays; do not select the frames ZIP.");
+  video.src=url;
+  video.load();
+  status.className="";
+  status.textContent="Loading video metadata for "+file.name+" ("+(file.size/1048576).toFixed(1)+" MB)… Analyze Frames will unlock when the browser can read its duration and dimensions.";
+  run.disabled=true;
+  metadataTimer=setTimeout(()=>{
+    if(run.disabled) markVideoFailure("The video is selected, but Safari has not supplied its metadata after 15 seconds. This is a decode/load stall, not a missing button. Check that the MOV plays locally in Safari.");
+  },15000);
 });
 
 const sharedVideoUrl=new URLSearchParams(window.location.search).get("video");
