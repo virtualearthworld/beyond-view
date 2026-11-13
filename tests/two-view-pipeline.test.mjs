@@ -17,9 +17,17 @@ for(let i=0;i<5;i++)points.push({from:{x:30+i*31,y:45+i*17},to:{x:570-i*23,y:80+
 const result=estimateTwoViewPose(points,{K1:K,iterations:350,thresholdPixels:1.5,minInliers:20,minimumPoints:12});
 assert.ok(["two-view-pose-estimated","ambiguous-pose","pose-recovery-failed","pose-selection-failed"].includes(result.status));
 assert.ok(result.epipolar.inlierCount>=20,"robust epipolar fitting should retain the synthetic scene tracks");
+assert.ok(Array.isArray(result.epipolarInlierTracks),"pose estimation must expose its exact geometric inlier set");
+assert.equal(result.epipolarInlierTracks.length,result.epipolar.inlierCount);
+assert.equal(result.epipolarResidualTrackCount,points.length-result.epipolar.inlierCount);
+assert.ok(result.epipolarInlierTracks.every(track=>Number.isFinite(track.epipolarErrorPixels)));
+const inputKeys=new Set(points.map(track=>[track.from.x,track.from.y,track.to.x,track.to.y].join(",")));
+assert.ok(result.epipolarInlierTracks.every(track=>inputKeys.has([track.from.x,track.from.y,track.to.x,track.to.y].join(","))));
 assert.equal(result.scaleKnown,false,"monocular two-view translation scale must remain explicitly unknown");
 assert.ok(result.status!=="two-view-pose-estimated" || result.pose,"successful status must include a selected pose");
 const weak=estimateTwoViewPose(points.slice(0,5),{K1:K});
 assert.equal(weak.status,"insufficient-epipolar-support");
 assert.equal(weak.pose,null);
+assert.ok(Array.isArray(weak.epipolarInlierTracks));
+assert.equal(weak.epipolarInlierTracks.length,weak.epipolar.inliers.length);
 console.log("two-view pipeline integration tests passed");

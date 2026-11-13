@@ -41,7 +41,7 @@ export function estimateCameraTrajectory(framePairs, {
     });
     if (estimate.status !== "two-view-pose-estimated" || !estimate.pose) {
       segments.push({index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
-        status:estimate.status,pose:null,diagnostics:{...estimate.epipolar,poseQuality:estimate.candidateScores?.find(score=>score.index===estimate.selectedCandidateIndex)??null} ?? null});
+        status:estimate.status,pose:null,cameraModelTracks:[],diagnostics:{...estimate.epipolar,poseQuality:estimate.candidateScores?.find(score=>score.index===estimate.selectedCandidateIndex)??null} ?? null});
       poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null,componentId:null});
       // The missing relative transform breaks the chain. Restart subsequent
       // poses in a new local component rather than pretending the path connects.
@@ -55,7 +55,7 @@ export function estimateCameraTrajectory(framePairs, {
     const t=estimate.pose.translationDirection;
     if (Math.abs(determinant(R)-1)>0.05 || Math.abs(norm(t)-1)>1e-5) {
       segments.push({index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
-        status:"invalid-pose-matrix",pose:null});
+        status:"invalid-pose-matrix",pose:null,cameraModelTracks:[]});
       poses.push({frame:pair.toFrame ?? index+1,status:"gap",rotation:null,translation:null,componentId:null});
       componentId += 1;
       cumulativeR = identity();
@@ -80,7 +80,9 @@ export function estimateCameraTrajectory(framePairs, {
     cumulativeT=add(apply(R,cumulativeT),t);
     cumulativeR=multiply(R,cumulativeR);
     const segment={index,fromFrame:pair.fromFrame ?? index,toFrame:pair.toFrame ?? index+1,
-      status:"estimated",componentId,pose:{rotation:R,translationDirection:t},diagnostics:{...estimate.epipolar,poseQuality:estimate.candidateScores?.find(score=>score.index===estimate.selectedCandidateIndex)??null}};
+      status:"estimated",componentId,pose:{rotation:R,translationDirection:t},
+      cameraModelTracks:Array.isArray(estimate.epipolarInlierTracks)?estimate.epipolarInlierTracks:[],
+      diagnostics:{...estimate.epipolar,poseQuality:estimate.candidateScores?.find(score=>score.index===estimate.selectedCandidateIndex)??null}};
     segments.push(segment);
     poses.push({frame:pair.toFrame ?? index+1,rotation:cumulativeR.map(r=>r.slice()),translation:cumulativeT.slice(),status:"estimated",componentId,componentOrigin:index>0 && segments[index-1].status!=="estimated"});
   }

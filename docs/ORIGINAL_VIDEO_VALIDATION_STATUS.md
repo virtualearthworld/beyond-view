@@ -39,12 +39,13 @@ The clip contains two people in the foreground with waterfront, skyline, and wat
 - The button remains disabled until the analysis module is initialized and the selected file has a positive video width, height, and duration.
 - Analysis begins only after the user presses **Analyze video**.
 - The Lab samples up to 32 frames at 0.75-second intervals, resized to 480 pixels wide, then performs feature tracking, homography diagnostics, pairwise epipolar camera-pose estimation, multi-frame track linking, trajectory regularization, experimental translation/landmark bundle adjustment, sparse triangulation, multi-view reprojection checks, and provisional point-cloud fusion.
+- Sparse and multi-view geometry now receive only the epipolar RANSAC inliers from pairs whose relative pose was successfully estimated. Non-inlier tracks and all tracks from failed-pose pairs are retained in the diagnostics but held out of the current geometry inputs.
 - The video remains local to the browser in this workflow; no Beyond View server upload is performed.
 
 ## Important limitations in the current pipeline
 
 - Homography-consistent tracks are not proof of static background. Homography residuals may be parallax, occlusion, reflections, moving people/water, or matching errors.
-- The homography-based layer report is diagnostic only. It is not semantic person/water segmentation, and it does not prove that foreground people or water have been removed from the geometry inputs.
+- The homography-based layer report is diagnostic only. It is not semantic person/water segmentation. Epipolar RANSAC filtering is a conservative geometric gate, not a semantic mask: a moving person or water-surface feature that happens to satisfy the dominant epipolar model can still enter the geometry candidate set.
 - Camera calibration is assumed unless the user supplies a trusted focal length. Lens distortion and absolute scale are not recovered.
 - Relative camera poses may contain gaps and accumulated drift. Translation-only regularization and experimental landmark/translation bundle adjustment are not full global bundle adjustment.
 - The sparse preview displays a pair-local cloud. The PLY export is provisional, has unknown scale, and is not a textured mesh or Gaussian-splat environment.

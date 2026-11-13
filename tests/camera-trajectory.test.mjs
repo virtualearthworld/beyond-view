@@ -45,6 +45,10 @@ assert.equal(trajectory.longestConnectedSegmentCount,2,
 assert.equal(trajectory.poses[0].translation[0],0);
 assert.ok(trajectory.estimatedSegmentCount>=1,"synthetic known-pose segments should yield trajectory progress");
 assert.ok(trajectory.segments[0].diagnostics.poseQuality,"estimated trajectory segment should expose selected pose quality");
+assert.ok(Array.isArray(trajectory.segments[0].cameraModelTracks),"estimated segments must expose the epipolar inliers used for camera pose");
+assert.equal(trajectory.segments[0].cameraModelTracks.length,trajectory.segments[0].diagnostics.inlierCount);
+assert.ok(trajectory.segments[0].cameraModelTracks.every(track=>Number.isFinite(track.epipolarErrorPixels)));
+assert.deepEqual(trajectory.segments[2].cameraModelTracks,[],"a failed pose segment must not contribute geometry tracks");
 assert.ok(Number.isFinite(trajectory.segments[0].diagnostics.poseQuality.medianReprojectionErrorPixels),"pose quality should include median reprojection error");
 assert.ok(trajectory.segments[0].diagnostics.poseQuality.positiveDepthRatio>0.9,"pose quality should include positive-depth ratio");
 console.log("camera trajectory regression tests passed");
