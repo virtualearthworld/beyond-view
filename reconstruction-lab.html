@@ -29,10 +29,10 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="eyebrow">First-party computer vision · Development preview</div>
 <h1>Measure what the camera actually saw.</h1>
 <p>This lab runs in your browser and uses only the pixels in your selected video. Its source-faithful profile samples frames every 0.5 seconds (up to 48 frames) at up to 640 pixels wide to improve overlap and retain more image detail. It detects visual corners, tracks matching image patches, and measures apparent motion. No AI-generated people, buildings, water, textures, or missing scenery are added. The video is processed locally by this page; it is not uploaded.</p>
-<div class="actions"><label for="video-file">Upload your original video</label><input id="video-file" type="file" accept="video/*,.mov,.mp4,.m4v,.webm" aria-label="Choose your original video"><button id="run" disabled hidden>Analyze video</button></div>
+<div class="actions"><label for="video-file">Upload your original video</label><input id="video-file" type="file" accept="video/*,.mov,.mp4,.m4v,.webm" aria-label="Choose your original video"><button id="run" type="button" disabled>Analyze video</button></div>
 <div class="actions"><label for="focal-length">Estimated focal length (pixels):</label><input id="focal-length" type="number" min="100" max="5000" step="10" value="2304" style="width:120px" aria-describedby="calibration-note"></div>
 <small id="calibration-note">Starting value assumes 1.2 × original video width; this is not verified calibration. If known, enter calibrated focal length in original-video pixels; the lab scales it to the 480 px analysis frames.</small>
-<div id="status" role="status" aria-live="polite">Choose your original video here. After upload, frame preparation, feature tracking, camera-motion analysis, and sparse 3D-point reconstruction will start automatically. This is a development pipeline, not yet a completed 3D conversion.</div>
+<div id="status" role="status" aria-live="polite"></div>
 <video id="video" hidden muted playsinline preload="metadata"></video>
 <div class="metrics">
 <div class="metric"><strong id="duration">—</strong><span>Video duration</span></div>
@@ -107,42 +107,42 @@ const ctx=canvas.getContext("2d");
 const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
 let url=null, cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
-let metadataTimer=null;
-function markVideoReady(sourceLabel){
-  if(metadataTimer){clearTimeout(metadataTimer);metadataTimer=null;}
+function markVideoReady(){
   focalInput.value=String(Math.round(video.videoWidth*1.2));
-  document.querySelector("#duration").textContent=Number.isFinite(video.duration)?video.duration.toFixed(1)+" s":"Duration unavailable";
-  status.className="good";
-  status.textContent=sourceLabel+" Video decoded ("+video.videoWidth+" × "+video.videoHeight+"). Ready. Press Analyze video when you want to begin.";
-  run.disabled=false;
-  run.hidden=false;
-  run.textContent="Analyze video";
+  document.querySelector("#duration").textContent=Number.isFinite(video.duration)?video.duration.toFixed(1)+" s":"—";
 }
 function markVideoFailure(message){
-  if(metadataTimer){clearTimeout(metadataTimer);metadataTimer=null;}
   run.disabled=true;
+  status.hidden=false;
   status.className="";
   status.textContent=message;
 }
 picker.addEventListener("change",()=>{
   if(url) URL.revokeObjectURL(url);
   const file=picker.files?.[0];
-  if(!file){markVideoFailure("No video selected. Choose the original waterfront MOV file.");return;}
+  if(!file){run.disabled=true;return;}
   const looksLikeVideo=file.type.startsWith("video/") || /\.(mov|mp4|m4v|webm)$/i.test(file.name);
-  if(!looksLikeVideo){markVideoFailure("That file does not look like a supported video. Select the original MOV/MP4 video, not the frames ZIP.");return;}
+  if(!looksLikeVideo){markVideoFailure("Please choose a MOV or MP4 video.");return;}
   url=URL.createObjectURL(file);
-  video.onloadedmetadata=()=>markVideoReady("Selected local file.");
-  video.onerror=()=>markVideoFailure("Safari could not decode this video. The file is selected ("+file.name+"), but its codec/container could not be read. Try opening the MOV in Safari first to confirm it plays; do not select the frames ZIP.");
+  video.onerror=()=>markVideoFailure("This video format could not be read by your browser. Try an MP4 version.");
+  video.onloadedmetadata=markVideoReady;
   video.src=url;
   video.load();
-  status.className="";
-  status.textContent="Video selected: "+file.name+" ("+(file.size/1048576).toFixed(1)+" MB). Reading video metadata. The Analyze video button will be enabled when the video is ready…";
-  run.disabled=true;
-  run.hidden=true;
-  metadataTimer=setTimeout(()=>{
-    if(run.disabled) markVideoFailure("The video is selected, but Safari has not supplied its metadata after 15 seconds. This is a decode/load stall, not a missing button. Check that the MOV plays locally in Safari.");
-  },15000);
+  run.disabled=false;
+  run.textContent="Analyze video";
+  status.hidden=true;
 });
+async function waitForVideoReady(){
+  if(video.readyState>=1&&Number.isFinite(video.duration)) return;
+  await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{cleanup();reject(new Error("The selected video is taking too long to open. Try an MP4 copy."));},30000);
+    const cleanup=()=>{clearTimeout(timer);video.removeEventListener("loadedmetadata",ready);video.removeEventListener("error",failed);};
+    const ready=()=>{cleanup();resolve();};
+    const failed=()=>{cleanup();reject(new Error("The selected video could not be decoded by this browser."));};
+    video.addEventListener("loadedmetadata",ready,{once:true});
+    video.addEventListener("error",failed,{once:true});
+  });
+}
 
 function drawSparseCloud(points){
   cloudPoints=Array.isArray(points)?points:[];
@@ -195,8 +195,9 @@ function drawPair(a,b,tracks){
   }
 }
 run.addEventListener("click",async()=>{
-  run.disabled=true;run.hidden=false;run.textContent="Processing…";status.className="";status.textContent="Stage 1 of 4: Preparing frames from your original video…";
+  run.disabled=true;run.textContent="Processing…";status.hidden=false;status.className="";status.textContent="Preparing your video…";
   try{
+    await waitForVideoReady();
     const focalLength=Number(focalInput.value);
     if(!Number.isFinite(focalLength)||focalLength<100||focalLength>5000)throw new Error("Enter a focal length between 100 and 5000 pixels.");
     // Denser, higher-resolution source sampling improves overlap for image-based reconstruction.
@@ -336,7 +337,7 @@ run.addEventListener("click",async()=>{
     status.className="good";
     status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). A five-assumption calibration sweep recovered poses on "+calibrationSensitivity.map(result=>result.recoveredPairs).join(", ")+ " of "+pairReports.length+" pairs respectively. Calibration remains unverified. Only points supported by at least two frame-pair clouds are retained in the fused preview; single-observation candidates are counted and filtered. Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Motion-layer separation found "+supportedLayerPairs.length+" of "+pairReports.length+" frame pairs with sufficient background support; residual candidates are not semantic person/water detections. This is not yet a globally aligned or metric 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
-  finally{run.disabled=false;run.textContent="Run analysis again";}
+  finally{run.disabled=false;run.textContent="Analyze video";}
 });
 </script>
 </body>
