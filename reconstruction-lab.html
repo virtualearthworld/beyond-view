@@ -201,14 +201,14 @@ run.addEventListener("click",async()=>{
     if(!Number.isFinite(focalLength)||focalLength<100||focalLength>5000)throw new Error("Enter a focal length between 100 and 5000 pixels.");
     // Denser, higher-resolution source sampling improves overlap for image-based reconstruction.
     // Frames remain original video pixels; no generative fill or synthetic scene content is introduced.
-    const sampled=await sampleVideoFrames(video,{intervalSeconds:0.5,maxFrames:48,width:640});
+    const sampled=await sampleVideoFrames(video,{intervalSeconds:0.75,maxFrames:32,width:480});
     run.textContent="Tracking scene features…";
     status.textContent="Stage 2 of 4: "+sampled.length+" frames prepared. Detecting and tracking scene features…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
     if(sampled.length<2)throw new Error("The video is too short to compare two frames.");
     document.querySelector("#frames").textContent=String(sampled.length);
     const first=sampled[0], second=sampled[1], third=sampled[2] || null;
-    const featureSets=sampled.map(frame=>detectFeatures(frame,{maxFeatures:180,minDistance:10}));
+    const featureSets=sampled.map(frame=>detectFeatures(frame,{maxFeatures:140,minDistance:10}));
     run.textContent="Estimating camera motion…";
     status.textContent="Stage 3 of 4: Estimating camera motion and multi-view geometry…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
