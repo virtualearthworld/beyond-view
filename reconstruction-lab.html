@@ -203,12 +203,14 @@ run.addEventListener("click",async()=>{
     // Denser, higher-resolution source sampling improves overlap for image-based reconstruction.
     // Frames remain original video pixels; no generative fill or synthetic scene content is introduced.
     const sampled=await sampleVideoFrames(video,{intervalSeconds:0.5,maxFrames:48,width:640});
+    run.textContent="Tracking scene features…";
     status.textContent="Stage 2 of 4: "+sampled.length+" frames prepared. Detecting and tracking scene features…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
     if(sampled.length<2)throw new Error("The video is too short to compare two frames.");
     document.querySelector("#frames").textContent=String(sampled.length);
     const first=sampled[0], second=sampled[1], third=sampled[2] || null;
     const featureSets=sampled.map(frame=>detectFeatures(frame,{maxFeatures:180,minDistance:10}));
+    run.textContent="Estimating camera motion…";
     status.textContent="Stage 3 of 4: Estimating camera motion and multi-view geometry…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
     const pairReports=[];
@@ -247,6 +249,7 @@ run.addEventListener("click",async()=>{
     const bundle=optimizeBundleAdjustment(fullClipTrajectories,regularizedTrajectory,K,{maxTracks:250,iterations:3,minObservations:3});
     const trajectory=bundle.status==="experimental-translation-landmark-bundle-adjustment"
       ? {...regularizedTrajectory,poses:bundle.poses,bundleAdjustment:bundle} : regularizedTrajectory;
+    run.textContent="Reconstructing 3D points…";
     status.textContent="Stage 4 of 4: Reconstructing and fusing supported 3D points…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
     const sparse=reconstructSparseTrajectory(framePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
