@@ -23,8 +23,10 @@ assert.match(lab, /new URLSearchParams\(window\.location\.search\)\.get\("video"
   "the lab must accept the selected video URL");
 assert.match(lab, /sharedVideoUrl\.startsWith\("blob:"\)/,
   "the lab must restrict automatic import to a browser-local video URL");
-assert.match(lab, /run\.click\(\)/,
-  "the lab must start analysis automatically after the video loads");
+assert.match(lab, /run\.textContent="Analyze video"/,
+  "the lab must present a manual Analyze video button after the video loads");
+assert.doesNotMatch(lab, /run\.click\(\)/,
+  "video selection must not automatically start reconstruction");
 assert.match(html, /same original waterfront video/,
   "the homepage must explicitly preserve the user's original-video requirement");
 assert.match(html, /first-party Reconstruction Lab/,
