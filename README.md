@@ -2,65 +2,54 @@
 
 **Don't just watch the world. Enter it.**
 
-Beyond View is an early browser prototype for a social platform where people can watch a creator's video and, when a compatible reconstructed scene is available, enter that environment in 3D.
+Beyond View is an early prototype for turning original video into a measured 3D representation that can eventually be explored within the coverage actually supported by the footage.
 
-## Browser video-to-3D engine
+## Current video workflow
 
-The main workspace contains no video upload control. It opens the first-party [Reconstruction Lab](./reconstruction-lab.html), where the user uploads the original video once. On successful metadata decoding, the lab automatically prepares frames, tracks visual features, estimates camera motion, and attempts sparse 3D-point reconstruction. No frames ZIP or second upload is required. The video is processed locally in the browser and is not uploaded to a Beyond View server. The engine is built from the open-source Gausify Orbit browser application and includes frame preparation, camera-pose estimation (AKAZE or COLMAP), sparse reconstruction, Gaussian-splat training, and a 3D viewer. Processing requires a compatible modern browser and may require WebGPU; actual performance and success depend on the device and source footage. The resulting Gaussian-splat scene is immersive, but is not automatically a collision-aware, unrestricted walkable world.
+The main workspace has no video picker. Open the [Reconstruction Lab](./reconstruction-lab.html), choose the original video there once, and wait for the browser to decode its metadata. The **Analyze video** button becomes available only when the reconstruction modules have initialized and the selected video has a usable duration and dimensions. Selecting a file does not start analysis; the user must press **Analyze video**.
 
-## First real-video test
+The current first-party Lab processes the selected file locally in the browser. It samples up to 32 frames at 0.75-second intervals, resized to 480 pixels wide, then measures image correspondences, reports homography and epipolar camera-motion evidence, links multi-frame tracks, evaluates provisional camera trajectories and reprojection, and attempts sparse triangulation and point-cloud fusion. The original video is not sent to a Beyond View server by this flow.
 
-Use a short, steady orbit recording of a mostly stationary object or person. Move the camera around the subject rather than asking the subject to move; keep the subject visible, overlap adjacent viewpoints, use even lighting and textured surfaces, and avoid cuts, fast pans, zooms and motion blur. Open Beyond View in desktop Chrome or Edge with WebGPU, choose the MP4/MOV file, then open the Reconstruction Lab and upload the video there once. Frame preparation and reconstruction diagnostics start automatically after the browser decodes the video. The lab samples the clip at 0.5-second intervals (up to 48 frames), measures adjacent-frame feature tracks, estimates relative camera motion, links longer-lived tracks, and evaluates provisional sparse geometry. Points below the configured minimum triangulation angle are counted as weak-parallax candidates and excluded from the stable sparse cloud. Review weak-parallax warnings, camera-pose gaps, connected components, and reprojection diagnostics. Export the fused sparse PLY only as a provisional geometry diagnostic; it is not a complete scene. Record browser, GPU/device, video duration/resolution, processing time, pose success and visual defects. This is the validation needed before claiming reliable video-to-3D conversion. The engine is an open-source orbit-reconstruction component, not yet Beyond View's own general-purpose video reconstruction model.
+These are development diagnostics, not a finished source-faithful 3D environment. The sparse preview is pair-local, scale is unknown, and the fused PLY is only a provisional geometry export. The current homography-based motion-layer report is not semantic person/water segmentation: residual tracks can be parallax, occlusion, reflection, moving content, or tracking errors. The pipeline does not yet prove that moving people and water have been excluded from static geometry.
 
-## First-party reconstruction lab (development diagnostics)
+## Original waterfront test source
 
-Open the browser-based [Reconstruction Lab](./reconstruction-lab.html) from the main workspace. It uses code maintained in this repository to sample frames locally, detect image corners, track image patches between views, estimate a dominant 2D translation, fit a robust perspective homography with RANSAC, reject inconsistent image tracks, link short feature trajectories across three frames, and report perspective-fit error and spatial coverage. Automated tests cover synthetic triangulation, known feature motion, robust translation, perspective mapping with outliers, homography quality metrics, degenerate observations, and multi-frame trajectory linking. The selected video is not uploaded by this diagnostic page. Automated Node.js regression tests cover synthetic triangulation, feature tracking under known motion, and rejection of inconsistent motion tracks; GitHub Actions runs these tests on relevant changes.
+The target remains the previously supplied `IMG_1325(1).mov` waterfront video. Its previously recorded metadata is 1920 × 1080, approximately 29.9975 FPS, 595 frames, 19.835 seconds, and about 37.9 MB. The source is intentionally not committed to this public repository. Historical OpenCV correspondence and pairwise-pose experiments are documented in [the camera coverage report](./docs/CAMERA_MOTION_COVERAGE_ANALYSIS.md) and [the triangulation report](./docs/ORIGINAL_VIDEO_PARALLAX_TRIANGULATION_ANALYSIS.md). Those earlier experiments are not a fresh end-to-end run of the current browser Lab.
 
-The first-party lab remains a separate measurement and validation tool. Its relative camera trajectory and sparse point cloud are provisional diagnostics, not the same reconstruction output as the Gaussian-splat engine. It does **not** yet produce a complete mesh or enable walking in a reconstructed scene. No unseen scenery should be fabricated.
+Do not replace this target with a staged single-object video or a sample scene. People, water, reflections, and other independently moving content must not be mistaken for static waterfront geometry. No unseen buildings, surfaces, or textures may be generated to fill gaps.
 
-## Current prototype
+## Repository components and boundaries
 
-- `index.html`: responsive main workspace that links to the first-party Reconstruction Lab; the Lab is the only video upload location.
-- Video preview and engine handoff run in the browser; selecting a file does **not** upload it to a Beyond View server.
-- **ENTER 3D** opens an interactive sample Gaussian Splatting environment using Three.js and Spark.
-- The sample scene is loaded from Spark's hosted demo asset endpoint; it is **not generated from the selected video**.
-- The viewer supports drag-to-look controls and scroll/pinch zoom. The live page still needs hands-on testing across desktop and mobile browsers.
-- Accounts, online uploads, social features, and durable hosted scene storage are not implemented. The browser engine can attempt video-to-3D processing locally, but the result is not yet connected to a hosted creator feed or persistent scene library.
+- `index.html`: main workspace and the single link to the Reconstruction Lab.
+- `reconstruction-lab.html`: the only video picker and the explicit Analyze video action.
+- `reconstruction/`: first-party browser diagnostics for feature tracks, epipolar/camera-pose estimation, trajectory checks, triangulation, reprojection, point-cloud fusion, and export.
+- `immersive-engine/`: a separate packaged Gausify Orbit browser application. It is not currently wired to the Lab's selected local file, and no output from it has been verified as a reconstruction of the waterfront source video. Do not present a demo scene from it as the user's result.
+- `backend/`: a Cloudflare Worker prototype that stores uploaded files in R2 and reports `not_started`; it does not perform reconstruction. It is not configured in `config.js`. Its 25 MB limit is below the original waterfront video's approximately 37.9 MB size, so it cannot currently accept the target clip.
+
+## What is still missing
+
+1. A fresh browser end-to-end run of the exact waterfront file through the current one-picker, manual-Analyze workflow.
+2. A reliable people/water/reflection segmentation or equivalent conservative masking stage, with uncertain regions preserved rather than forced into the static model.
+3. A calibrated, globally consistent camera trajectory and validated multi-view tracks with reported pose gaps, depth uncertainty, triangulation angles, and held-out reprojection.
+4. A recognizable, source-derived dense representation (mesh or Gaussian splats) with inspectable source-frame provenance.
+5. A coverage envelope that restricts navigation to measured geometry and leaves unseen regions unavailable.
+6. If local browser processing proves insufficient, an approved compute backend and storage design. The existing upload-only Worker is not that backend.
+
+A passing unit-test suite or a successful GitHub Pages deployment is not evidence that these reconstruction milestones are complete.
 
 ## Development principles
 
-1. Keep this repository separate from the Virtual Earth project.
-2. Build and verify one small stage at a time.
-3. Prefer free and open-source tools while this is a zero-budget prototype.
-4. Do not claim reconstruction or free-walk functionality works until it has been tested.
-5. Reuse a saved reconstructed scene for viewers; do not make viewers run the original reconstruction themselves.
-
-## Current technical components
-
-- The in-repository `immersive-engine/` is built from the open-source [Gausify Orbit](https://github.com/obraia/gausify-orbit) browser application.
-- Its browser pipeline includes AKAZE or COLMAP camera estimation, bundle adjustment, Gaussian-splat training and a scene viewer.
-- WebAssembly and WebGPU assets are packaged with the built engine; model downloads and device capabilities can affect the first run.
-- The first-party `reconstruction/` modules are a separate experimental geometry-validation pipeline. Sparse triangulation rejects points below its configured minimum parallax angle from the stable cloud while reporting their count. Their sparse PLY output is not yet imported into the Gaussian-splat engine.
-
-## Planned milestones
-
-1. Verify the browser interface and local video playback.
-2. Publish the static prototype using GitHub Pages.
-3. Connect the selected local video to the first-party Reconstruction Lab. **The single-upload workflow and automatic analysis start are implemented; live browser verification on the original clip remains.**
-4. Validate persistent tracks, camera-pose continuity, parallax-conditioned depth, and sparse geometry on the original waterfront video before attempting dense scene appearance reconstruction.
-5. Connect completed scene packages to their source videos and add durable scene storage.
-6. Add a viewer/feed experience, with movement limited to geometry actually supported by the reconstruction.
-
-## Technical reality
-
-A static site can host the interface and display a previously reconstructed scene, but it cannot by itself provide secure accounts, large video uploads, durable scene storage, or reliable GPU-based reconstruction. Those features will need backend services and may eventually incur costs. Free tiers and compute availability must be checked before relying on them.
-
-An interactive Gaussian Splatting viewer is not the same as a fully navigable, collision-aware 3D world. Free walking must be limited to areas supported by the underlying reconstruction; it must not invent geometry for uncaptured areas.
+1. Keep Beyond View separate from the Virtual Earth / virtual-art project.
+2. Preserve the original source video and its provenance.
+3. Prefer free and open-source methods while this remains a zero-budget prototype.
+4. Never synthesize missing people, buildings, water, reflections, or hidden geometry.
+5. Report uncertain geometry as uncertain; do not claim metric scale or unrestricted walking without evidence.
+6. Reuse a verified reconstructed scene for viewers rather than making every viewer process the source video.
 
 ## Run locally
 
-Open `index.html` in a modern browser served from a local web server. Internet access is required for the CDN modules and demo 3D asset. Use **Choose a video** to preview a video file stored on your device, then choose **Analyze this video in Reconstruction Lab**. The lab opens in a new tab and imports the selected file from the original tab's local Blob URL; keep the original tab open until import and analysis finish. The file is not uploaded to a Beyond View server.
+Serve the repository root with a local web server, open `index.html`, then open the Reconstruction Lab. Choose the original video in the Lab and press **Analyze video** after the metadata is ready. No second upload, ZIP handoff, or automatic analysis on file selection is part of the current flow.
 
-## Status
+## Current status
 
-This is a prototype, not a production-ready social network. The next check is to open the updated GitHub Pages site and test **ENTER 3D**. A successful code deployment does not by itself prove the viewer loads correctly on every device.
+The one-location upload and explicit analysis gate are implemented and covered by regression tests. The latest recorded reconstruction-test and Pages workflows passed on commit `74154056f5c866c2a0928ddce00bf3a3283eaf59`. The original waterfront clip has not yet passed the current browser end-to-end acceptance gate, and Beyond View is not yet a completed video-to-3D reconstruction product.
