@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 const html = await readFile(new URL("../reconstruction-lab.html", import.meta.url), "utf8");
 const motion = await readFile(new URL("../reconstruction/motion-separation.js", import.meta.url), "utf8");
 assert.match(html, /Multi-frame consistency check/);
-assert.match(html, /intervalSeconds:0\.5,maxFrames:48,width:640/);
+assert.match(html, /intervalSeconds:0\.75,maxFrames:32,width:480/);
 assert.match(html, /for\(let i=0;i<sampled\.length-1;i\+\+\)/);
 assert.match(html, /pairReports\.map\(\(p,i\)=>/);
 assert.match(html, /globally aligned or metric 3D reconstruction/);
