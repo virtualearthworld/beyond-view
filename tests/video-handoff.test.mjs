@@ -10,7 +10,11 @@ assert.match(lab, /video\.src=objectUrl/);
 assert.match(lab, /window\.__beyondViewAnalysisReady=false/);
 assert.match(lab, /syncAnalyzeButton/);
 assert.match(lab, /window\.__beyondViewAnalysisReady=true/);
-assert.doesNotMatch(lab, /run\.disabled=false/);
+const pickerStart = lab.indexOf('picker.addEventListener("change"');
+const pickerEnd = lab.indexOf("\n})();", pickerStart);
+const pickerHandler = lab.slice(pickerStart, pickerEnd);
+assert.match(pickerHandler, /syncAnalyzeButton\(\)/);
+assert.doesNotMatch(pickerHandler, /run\.disabled=false/);
 assert.doesNotMatch(lab, /run\.addEventListener\("click",\(\)=>/);
 assert.ok(lab.indexOf('picker.addEventListener("change"') < lab.indexOf('<script type="module">'),
  "file picker must be connected before reconstruction-module imports run");
