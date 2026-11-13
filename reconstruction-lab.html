@@ -220,7 +220,7 @@ function drawPair(a,b,tracks){
   }
 }
 run.addEventListener("click",async()=>{
-  window.__beyondViewAnalysisReady=true;run.disabled=true;run.textContent="Processing…";status.hidden=false;status.className="";status.textContent="Preparing your video…";
+  run.disabled=true;run.textContent="Processing…";status.hidden=false;status.className="";status.textContent="Preparing your video…";
   try{
     await waitForVideoReady();
     const focalLength=Number(focalInput.value);
@@ -364,6 +364,7 @@ run.addEventListener("click",async()=>{
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{run.disabled=false;run.textContent="Analyze video";}
 });
+window.__beyondViewAnalysisReady=true;
 </script>
 </body>
 </html>
