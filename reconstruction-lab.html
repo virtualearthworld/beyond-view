@@ -84,6 +84,46 @@ small{color:var(--muted)}a{color:var(--accent)}
 <p><a href="./index.html">Back to Beyond View</a></p>
 </section>
 </main>
+<script>
+(()=>{
+ const picker=document.querySelector("#video-file");
+ const video=document.querySelector("#video");
+ const run=document.querySelector("#run");
+ const focal=document.querySelector("#focal-length");
+ const status=document.querySelector("#status");
+ let objectUrl=null;
+ video.addEventListener("loadedmetadata",()=>{
+   if(video.videoWidth>0) focal.value=String(Math.round(video.videoWidth*1.2));
+   document.querySelector("#duration").textContent=Number.isFinite(video.duration)?video.duration.toFixed(1)+" s":"—";
+ });
+ video.addEventListener("error",()=>{
+   run.disabled=true;
+   status.hidden=false;
+   status.textContent="This video could not be opened in this browser. Please try an MP4 copy.";
+ });
+ picker.addEventListener("change",()=>{
+   if(objectUrl) URL.revokeObjectURL(objectUrl);
+   const file=picker.files&&picker.files[0];
+   run.disabled=true;
+   status.hidden=true;
+   if(!file) return;
+   if(!(file.type.startsWith("video/")||/\.(mov|mp4|m4v|webm)$/i.test(file.name))){
+     status.hidden=false;status.textContent="Please choose a MOV or MP4 video.";return;
+   }
+   objectUrl=URL.createObjectURL(file);
+   video.src=objectUrl;
+   video.load();
+   run.textContent="Analyze video";
+   run.disabled=false;
+ });
+ run.addEventListener("click",()=>{
+   if(!window.__beyondViewAnalysisReady){
+     status.hidden=false;
+     status.textContent="Please refresh the page and try again.";
+   }
+ });
+})();
+</script>
 <script type="module">
 import { sampleVideoFrames, detectFeatures, trackFeatures, summarizeParallax, estimateDominantTranslation, linkTrackSequences, linkTrackSequencesByComponent } from "./reconstruction/sparse-reconstruction.js";
 import { classifyMotionLayers } from "./reconstruction/motion-separation.js";
@@ -106,7 +146,7 @@ const canvas=document.querySelector("#stage");
 const ctx=canvas.getContext("2d");
 const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
-let url=null, cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
+let cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
 function markVideoReady(){
   focalInput.value=String(Math.round(video.videoWidth*1.2));
   document.querySelector("#duration").textContent=Number.isFinite(video.duration)?video.duration.toFixed(1)+" s":"—";
@@ -117,21 +157,6 @@ function markVideoFailure(message){
   status.className="";
   status.textContent=message;
 }
-picker.addEventListener("change",()=>{
-  if(url) URL.revokeObjectURL(url);
-  const file=picker.files?.[0];
-  if(!file){run.disabled=true;return;}
-  const looksLikeVideo=file.type.startsWith("video/") || /\.(mov|mp4|m4v|webm)$/i.test(file.name);
-  if(!looksLikeVideo){markVideoFailure("Please choose a MOV or MP4 video.");return;}
-  url=URL.createObjectURL(file);
-  video.onerror=()=>markVideoFailure("This video format could not be read by your browser. Try an MP4 version.");
-  video.onloadedmetadata=markVideoReady;
-  video.src=url;
-  video.load();
-  run.disabled=false;
-  run.textContent="Analyze video";
-  status.hidden=true;
-});
 async function waitForVideoReady(){
   if(video.readyState>=1&&Number.isFinite(video.duration)) return;
   await new Promise((resolve,reject)=>{
@@ -195,7 +220,7 @@ function drawPair(a,b,tracks){
   }
 }
 run.addEventListener("click",async()=>{
-  run.disabled=true;run.textContent="Processing…";status.hidden=false;status.className="";status.textContent="Preparing your video…";
+  window.__beyondViewAnalysisReady=true;run.disabled=true;run.textContent="Processing…";status.hidden=false;status.className="";status.textContent="Preparing your video…";
   try{
     await waitForVideoReady();
     const focalLength=Number(focalInput.value);
