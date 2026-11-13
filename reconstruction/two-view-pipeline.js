@@ -22,11 +22,15 @@ export function estimateTwoViewPose(tracks, {
   const epipolar = estimateEpipolarModel(tracks, {
     thresholdPixels, iterations, minInliers
   });
-  if (!epipolar.F || epipolar.inliers.length < minInliers ||
+  const epipolarInlierTracks = Array.isArray(epipolar.inliers) ? epipolar.inliers : [];
+  const epipolarResidualTrackCount = Math.max(0, tracks.length - epipolarInlierTracks.length);
+  if (!epipolar.F || epipolarInlierTracks.length < minInliers ||
       epipolar.status !== "epipolar-model-found") {
     return {
       status: "insufficient-epipolar-support",
       epipolar,
+      epipolarInlierTracks,
+      epipolarResidualTrackCount,
       pose: null,
       limitation: "No stable two-view pose is reported unless the epipolar model has sufficient inlier support."
     };
@@ -41,6 +45,8 @@ export function estimateTwoViewPose(tracks, {
     return {
       status: "pose-recovery-failed",
       epipolar,
+      epipolarInlierTracks,
+      epipolarResidualTrackCount,
       pose: null,
       error: error instanceof Error ? error.message : String(error)
     };
@@ -55,6 +61,8 @@ export function estimateTwoViewPose(tracks, {
     return {
       status: "pose-selection-failed",
       epipolar,
+      epipolarInlierTracks,
+      epipolarResidualTrackCount,
       recovered,
       pose: null,
       error: error instanceof Error ? error.message : String(error)
@@ -65,10 +73,12 @@ export function estimateTwoViewPose(tracks, {
     epipolar: {
       status: epipolar.status,
       totalTracks: epipolar.totalTracks,
-      inlierCount: epipolar.inliers.length,
+      inlierCount: epipolarInlierTracks.length,
       inlierRatio: epipolar.inlierRatio,
       medianEpipolarErrorPixels: epipolar.medianEpipolarErrorPixels
     },
+    epipolarInlierTracks,
+    epipolarResidualTrackCount,
     pose: selection.selectedIndex === null ? null : recovered.candidates[selection.selectedIndex],
     selectedCandidateIndex: selection.selectedIndex,
     candidateScores: selection.candidates,

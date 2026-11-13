@@ -41,7 +41,7 @@ Good correspondence counts justify continued investigation. Low triangulation an
 4. Press **Analyze video** to start. Choosing the file alone does not run analysis.
 5. The Lab processes the selected local file in the browser. It does not upload the clip, open a second upload page, or require a ZIP/frame handoff.
 
-The current Lab samples up to 32 frames at 0.75-second intervals and 480-pixel width. This is different from the historical 40-frame/0.5-second OpenCV audit above.
+The current Lab samples up to 32 frames at 0.75-second intervals and 480-pixel width. For pairs with a valid relative pose, sparse and multi-view geometry now use only epipolar RANSAC inliers; other tracks are kept in diagnostics but held out of geometry. This is geometric outlier filtering, not semantic people/water segmentation, and a moving feature can still pass if it follows the dominant epipolar model. This is different from the historical 40-frame/0.5-second OpenCV audit above.
 
 ## What must be checked
 
