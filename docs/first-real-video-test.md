@@ -2,9 +2,9 @@
 
 ## Target source — do not substitute another clip
 
-The target is the user's existing IMG_1325(1).mov waterfront video. It is a normal real-world recording, not a staged single-object orbit capture. The intended result must preserve the actual scene and its original people, waterfront, skyline, water, and camera movement. Do not replace it with a demo scene or ask the user to record a different video.
+The target is the user's existing `IMG_1325(1).mov` waterfront video. It is a normal real-world recording, not a staged single-object orbit capture. Preserve the actual people, waterfront, skyline, water, reflections, and camera movement. Do not replace it with a demo scene or ask for a different recording.
 
-Recorded source metadata:
+Previously recorded metadata:
 - 1920 × 1080
 - approximately 29.9975 FPS
 - 595 frames
@@ -13,11 +13,11 @@ Recorded source metadata:
 
 The original video is not committed to this public repository.
 
-## Previously measured results
+## Historical independent diagnostics
 
-These are historical independent local OpenCV diagnostics on the user's original video, not a fresh browser run:
+These measurements were collected in earlier local OpenCV experiments on the exact source file. They are not a fresh browser Reconstruction Lab run:
 
-| Measurement | Prior result |
+| Measurement | Historical result |
 |---|---:|
 | Sampled frames in camera-coverage audit | 40 |
 | Adjacent pairs | 39 |
@@ -31,32 +31,32 @@ These are historical independent local OpenCV diagnostics on the user's original
 | Accepted pair-local observations below 2° | 27.3% |
 | Median two-view reprojection error | approximately 0.388 px |
 
-The correspondence and pairwise pose results justify continued work. The low triangulation angles warn that depth is weak for a meaningful fraction of observations. Pairwise reprojection error is not proof of accurate depth, a globally stable camera path, or a walkable 3D environment.
+Good correspondence counts justify continued investigation. Low triangulation angles warn that depth is poorly conditioned for many observations. Low pairwise reprojection error does not prove accurate depth, a globally stable camera path, or a walkable 3D environment.
 
-## What the app now does with this exact file
+## Current application flow for the original file
 
-1. Choose the same IMG_1325(1).mov in the Beyond View main workspace.
-2. Select **Analyze this video in Reconstruction Lab**.
-3. The main page passes the same browser-local video Blob URL to the first-party lab in a new tab.
-4. The lab imports that exact local video and automatically starts its camera, track, trajectory, sparse triangulation, bundle-adjustment, and reprojection diagnostics.
-5. The original tab must remain open while the lab reads the Blob URL.
+1. Open the [Beyond View main workspace](../index.html) and then the [Reconstruction Lab](../reconstruction-lab.html).
+2. Choose the existing `IMG_1325(1).mov` in the Lab's single video picker.
+3. Wait until the browser reports that the video has decoded and enables **Analyze video**.
+4. Press **Analyze video** to start. Choosing the file alone does not run analysis.
+5. The Lab processes the selected local file in the browser. It does not upload the clip, open a second upload page, or require a ZIP/frame handoff.
 
-The video is not uploaded to a Beyond View server. This is a browser handoff and automated analysis path; it is not yet proof that the entire clip has reconstructed into a complete 3D scene.
+The current Lab samples up to 32 frames at 0.75-second intervals and 480-pixel width. This is different from the historical 40-frame/0.5-second OpenCV audit above.
 
-## What must be checked in the next run
+## What must be checked
 
-- How many adjacent pairs yield relative camera poses in the browser pipeline.
+- How many adjacent pairs yield valid relative camera poses in the browser pipeline.
 - How many persistent tracks survive across the sampled clip.
-- Whether the estimated trajectory remains in connected components or has failed gaps.
+- Whether the estimated trajectory remains in connected components or has explicit failed gaps.
 - Raw versus refined reprojection error using the same landmarks.
-- Number of accepted sparse 3D points and connected cloud components.
-- Median triangulation angle and the fraction below the 2° warning threshold.
-- Whether the exported PLY resembles measured geometry from the actual waterfront scene rather than noise or a fragmented pair-local cloud.
+- Accepted/rejected sparse 3D points and connected cloud components.
+- Triangulation-angle distribution and the fraction below the 2° warning threshold.
+- Whether the exported PLY resembles measured geometry from the waterfront source rather than noise or a fragmented pair-local cloud.
 
-The source contains moving foreground people and water/reflections. Residual motion from the background homography is not a semantic person/water detector; it can also be parallax, occlusion, reflection, or tracking error. Ambiguous tracks must remain uncertain. Do not fuse moving foreground features into static building geometry.
+The source contains moving foreground people and water/reflections. Homography residuals are not semantic person/water detections; they can also represent parallax, occlusion, reflection, or tracking error. The current Lab does not yet have a validated semantic mask that guarantees these moving regions are excluded from static geometry. Preserve ambiguous tracks as uncertain.
 
 ## Acceptance gate
 
-The next milestone is a recognizable, source-faithful sparse reconstruction of the actual waterfront clip, supported by stable multi-frame camera poses and measured reprojection. It is not yet the final 3D Gaussian-splat experience. Do not call the video successfully reconstructed until the output can be inspected against its source frames and unsupported regions remain unknown.
+A recognizable, source-faithful sparse reconstruction of the actual waterfront clip must be supported by stable multi-frame camera poses, measured reprojection, source-frame inspection, and conservative handling of moving content. It is not yet the final 3D Gaussian-splat experience. Do not call the video successfully reconstructed until the geometry can be inspected against its source frames and unsupported regions remain unavailable.
 
-A 3D Gaussian-splat or mesh stage comes after the original clip's camera and geometry evidence is strong enough. The separate Gausify Orbit component remains experimental and is not the primary analysis path for this moving waterfront footage.
+The separate Gausify Orbit build is not currently connected to the Lab's selected video. A dense 3DGS or mesh stage must be evaluated on this same clip only after the camera and geometry evidence is strong enough.

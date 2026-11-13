@@ -1,53 +1,76 @@
 # Original video validation status — Beyond View
 
-## User's exact target video
+## Exact target source
 
-The target is the previously supplied IMG_1325(1).mov, a waterfront recording. We are not switching to a new video or a single-object sample. The desired output must be derived from the actual footage and preserve its source content.
+The target is the previously supplied `IMG_1325(1).mov`, a waterfront recording. Do not substitute a staged single-object orbit video, a demo scene, or another upload.
 
+Previously recorded source metadata:
 - 1920 × 1080
 - approximately 29.9975 FPS
 - 595 frames
 - 19.835 seconds
 - approximately 37.9 MB
-- The original file is deliberately not committed to this public repository.
 
-## Evidence already collected
+The original file is deliberately not committed to this public repository.
 
-The following results are from earlier independent local OpenCV analyses of the exact source file. They are not a fresh end-to-end browser reconstruction:
+## Historical source-video evidence
 
-| Test | Result | What it means |
+These values come from earlier independent local OpenCV experiments on the exact source file. They are not a fresh run of the current browser Lab and do not prove a complete reconstruction.
+
+| Test | Historical result | Interpretation |
 |---|---:|---|
-| Camera-coverage sample | 40 frames / 39 adjacent pairs | Broad temporal sample of the clip |
-| Median ratio-filtered ORB matches | 310 per pair | Repeated visual texture is available |
+| Camera-coverage sample | 40 frames / 39 adjacent pairs | Broad temporal sample |
+| Median ratio-filtered ORB matches | 310 per pair | Repeated image texture is available |
 | Median fundamental-matrix inliers | 210 per pair | Many matches are epipolar-consistent |
-| Median homography inliers | 146 per pair | A dominant image-motion model fits some content |
-| Median image-grid coverage | 7 of 12 cells | Matches are spread across much of the image |
-| Relative-pose recovery | 39 / 39 pairs | Pairwise pose estimation was possible under provisional calibration |
+| Median homography inliers | 146 per pair | A dominant 2D mapping explains some image motion |
+| Median occupied image-grid cells | 7 of 12 | Matches are spread across much of the image |
+| Relative-pose recovery | 39 / 39 pairs | Pairwise pose was possible under provisional intrinsics |
 | Median triangulation angle | 4.60° | Depth conditioning is limited for many observations |
 | Pair-local points below 2° | 27.3% | A substantial minority have weak parallax |
-| Median two-view reprojection error | about 0.388 px | Pairwise image fit is low, but depth can still be inaccurate |
+| Median two-view reprojection error | about 0.388 px | Low image residual does not guarantee accurate depth |
 
-The clip includes people in the foreground, with waterfront/skyline and water behind them. Moving people, water, reflections, and camera/boat motion must not be mistaken for a single static scene. Homography residuals are only independent-motion/parallax candidates, not semantic segmentation.
+The clip contains two people in the foreground with waterfront, skyline, and water behind them. People, water, reflections, boat structure, and other independently moving content must not be mistaken for static scene geometry.
 
-## Current implementation
+## Current application flow
 
-- First-party browser Reconstruction Lab: frame sampling, feature tracking, dominant motion and homography diagnostics, multi-frame track linking, relative camera pose estimation, translation-path regularization, experimental landmark/translation bundle adjustment, sparse triangulation, point-cloud fusion, reprojection diagnostics, and PLY export. Weak-parallax points below the configured minimum triangulation angle are counted and excluded from the stable sparse cloud.
-- Main workspace now hands the exact selected local video to Reconstruction Lab in a new tab using a browser-local Blob URL.
-- The lab automatically imports that video and starts analysis.
-- The original tab must remain open until the lab finishes reading the local Blob URL.
-- The optional Gausify Orbit Gaussian-splat engine remains separate and is not the primary path for this moving waterfront source.
+- `index.html` contains no video picker; it links to the Reconstruction Lab.
+- `reconstruction-lab.html` contains the only video picker and one **Analyze video** button.
+- Selecting the file creates a browser-local object URL and waits for metadata. It does not start frame sampling or upload the video.
+- The button remains disabled until the analysis module is initialized and the selected file has a positive video width, height, and duration.
+- Analysis begins only after the user presses **Analyze video**.
+- The Lab samples up to 32 frames at 0.75-second intervals, resized to 480 pixels wide, then performs feature tracking, homography diagnostics, pairwise epipolar camera-pose estimation, multi-frame track linking, trajectory regularization, experimental translation/landmark bundle adjustment, sparse triangulation, multi-view reprojection checks, and provisional point-cloud fusion.
+- The video remains local to the browser in this workflow; no Beyond View server upload is performed.
+
+## Important limitations in the current pipeline
+
+- Homography-consistent tracks are not proof of static background. Homography residuals may be parallax, occlusion, reflections, moving people/water, or matching errors.
+- The homography-based layer report is diagnostic only. It is not semantic person/water segmentation, and it does not prove that foreground people or water have been removed from the geometry inputs.
+- Camera calibration is assumed unless the user supplies a trusted focal length. Lens distortion and absolute scale are not recovered.
+- Relative camera poses may contain gaps and accumulated drift. Translation-only regularization and experimental landmark/translation bundle adjustment are not full global bundle adjustment.
+- The sparse preview displays a pair-local cloud. The PLY export is provisional, has unknown scale, and is not a textured mesh or Gaussian-splat environment.
+- The separate `immersive-engine/` build is not connected to the Lab's selected video and has not been validated on this source.
+- The Cloudflare Worker under `backend/` is an upload-only prototype, not a reconstruction service. It has a 25 MB limit, while this source is approximately 37.9 MB; `config.js` is blank and no Worker endpoint is configured for the app.
 
 ## What is not yet proven
 
-- A stable globally aligned camera trajectory for the complete clip.
-- Accurate or metric depth. The lab now excludes low-parallax points from the stable sparse cloud, but the remaining depth is still provisional.
-- A coherent, recognizable full-scene point cloud.
-- A textured mesh or Gaussian-splat scene generated from this exact clip.
-- A collision-aware or freely walkable 3D environment.
-- A full browser end-to-end run of the exact clip after the latest integration.
+- A stable, calibrated camera trajectory across the entire clip.
+- Reliable separation of people, water, reflections, and other moving content from static waterfront geometry.
+- Accurate depth or metric scale.
+- A coherent, recognizable source-faithful 3D representation with appearance.
+- A source-frame inspection/provenance view for every rendered surface.
+- A coverage-bounded navigation experience.
+- A complete browser end-to-end run of the exact clip using the current one-upload, explicit-Analyze flow.
+
+No fresh browser run of the exact clip is recorded in this update. Historical OpenCV measurements remain historical and must not be presented as current app output.
 
 ## Next acceptance gate
 
-Run the exact video through the first-party lab and inspect persistent track survival, camera-pose gaps, raw-versus-refined reprojection, sparse point count, connected components, triangulation-angle distribution, and exported PLY. Compare the geometry with original source frames. Preserve uncertain regions; do not generate missing scenery.
+Run the exact existing waterfront file through the Reconstruction Lab, wait for the decoded-video-ready state, and press **Analyze video**. Inspect:
+- per-pair pose success and gaps;
+- persistent track survival and connected camera components;
+- raw versus refined reprojection using identical landmarks;
+- accepted and rejected sparse/multi-view points;
+- triangulation-angle distribution and weak-parallax count;
+- fused point-cloud shape and exported PLY against actual source frames.
 
-Only after a recognizable source-faithful sparse reconstruction passes this gate should we move the same clip into a dense 3DGS/mesh appearance stage and connect the saved scene to the Beyond View viewing experience.
+Only after a recognizable, stable, source-faithful sparse reconstruction passes this gate should the project move to dense mesh/3DGS appearance reconstruction. Navigation must later be restricted to measured coverage. Unseen scenery remains unknown.

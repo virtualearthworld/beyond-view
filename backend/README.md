@@ -28,3 +28,8 @@ Cloudflare may offer free allowances for Workers and R2, but account eligibility
 
 ## Next development stage
 After a test upload is verified, add a separate reconstruction job pipeline. Real video-to-3D reconstruction usually needs substantial CPU/GPU processing and must be evaluated separately; successful upload is not proof of successful 3D conversion.
+
+
+## Compatibility note for the original waterfront test
+
+The existing `IMG_1325(1).mov` source is approximately 37.9 MB, which exceeds this prototype Worker's 25 MB upload limit. This Worker therefore cannot accept the current target video as configured. It is also not a reconstruction backend: a successful R2 upload only stores the file and returns `reconstructionStatus: "not_started"`. The repository's `config.js` remains blank, so the website is not configured to call this Worker. Do not route the original source through this prototype or describe it as a working video-to-3D service.
