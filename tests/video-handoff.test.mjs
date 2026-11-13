@@ -3,45 +3,21 @@ import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const lab = await readFile(new URL("../reconstruction-lab.html", import.meta.url), "utf8");
-assert.match(html, /new URL\("\.\/immersive-engine\/index\.html",window\.location\.href\)/,
-  "the optional experimental engine must remain separately accessible");
-assert.match(html, /labUrl\.searchParams\.set\("video",objectUrl\)/,
-  "the selected local video must be handed to the first-party lab");
-assert.match(html, /window\.open\(labUrl\.href,"_blank"\)/,
-  "the lab must open in a separate tab so the source blob URL remains alive");
-assert.match(html, /labTab\.opener=null/,
-  "the new lab tab must not retain access to the source page");
-assert.match(html, /Keep this tab open until the lab finishes importing it/,
-  "the user must be told to keep the source tab open during import");
-assert.match(html, /not uploaded to a Beyond View server/,
-  "the privacy statement must accurately describe the local browser handoff");
-console.log("video-to-lab handoff integration tests passed");
 
-assert.match(html, /Analyze this video in Reconstruction Lab/,
-  "the main workspace must provide a direct handoff to the first-party lab");
-assert.match(lab, /new URLSearchParams\(window\.location\.search\)\.get\("video"\)/,
-  "the lab must accept the selected video URL");
-assert.match(lab, /sharedVideoUrl\.startsWith\("blob:"\)/,
-  "the lab must restrict automatic import to a browser-local video URL");
-assert.match(lab, /run\.textContent="Analyze video"/,
-  "the lab must present a manual Analyze video button after the video loads");
+assert.match(html, /href="\.\/reconstruction-lab\.html"/,
+  "the main workspace must open the first-party Reconstruction Lab");
+assert.match(lab, /<input id="video-file" type="file"/,
+  "the lab must provide one original-video picker");
+assert.match(lab, /<button id="run" type="button" disabled>Analyze video<\/button>/,
+  "the Analyze video button must remain visible before and after file selection");
+assert.doesNotMatch(lab.match(/<button id="run"[^>]*>/)?.[0] ?? "", /hidden/,
+  "the Analyze video button must never be hidden");
+assert.match(lab, /run\.disabled=false;\s*run\.textContent="Analyze video"/,
+  "choosing a valid video must enable the manual Analyze video button");
+assert.match(lab, /run\.addEventListener\("click",async\(\)=>/,
+  "analysis must be triggered by an explicit button click");
+assert.match(lab, /await waitForVideoReady\(\)/,
+  "the click handler must wait for video metadata before sampling frames");
 assert.doesNotMatch(lab, /run\.click\(\)/,
-  "video selection must not automatically start reconstruction");
-assert.match(html, /same original waterfront video/,
-  "the homepage must explicitly preserve the user's original-video requirement");
-assert.match(html, /first-party Reconstruction Lab/,
-  "the homepage must identify the lab as the primary workflow");
-
-
-assert.match(html, /Analyze this video in Reconstruction Lab/,
-  "the main workspace must provide a direct handoff to the first-party lab");
-assert.match(html, /labUrl\.searchParams\.set\("video",objectUrl\)/,
-  "the exact selected local video must be passed into the lab");
-assert.match(lab, /new URLSearchParams\(window\.location\.search\)\.get\("video"\)/,
-  "the lab must accept the selected video URL");
-assert.match(lab, /sharedVideoUrl\.startsWith\("blob:"\)/,
-  "the lab must restrict automatic import to a browser-local video URL");
-assert.match(lab, /run\.click\(\)/,
-  "the lab must start analysis automatically after the video loads");
-assert.match(html, /same original waterfront video/,
-  "the homepage must explicitly preserve the user's original-video requirement");
+  "selecting a file must not auto-start analysis");
+console.log("manual video selection and analysis-control tests passed");
