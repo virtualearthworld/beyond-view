@@ -30,17 +30,17 @@ assert.equal((lab.match(/type="file"/g) || []).length, 1,
   "Reconstruction Lab must keep exactly one video picker");
 assert.equal((lab.match(/id="run"/g) || []).length, 1,
   "Reconstruction Lab must keep one explicit Analyze Video control");
-assert.doesNotMatch(html, /URL\\.createObjectURL|postMessage/,
+assert.doesNotMatch(html, /URL\.createObjectURL|postMessage/,
   "the main workspace must not hand the selected file to a second upload flow");
-assert.match(lab, /video\\.videoWidth>0&&video\\.videoHeight>0&&video\\.duration>0|video\\.duration>0&&video\\.videoWidth>0&&video\\.videoHeight>0/,
+assert.match(lab, /video\.videoWidth>0&&video\.videoHeight>0&&video\.duration>0|video\.duration>0&&video\.videoWidth>0&&video\.videoHeight>0/,
   "analysis readiness must require real decoded video dimensions and duration");
-assert.match(lab, /Video decoded \\(/,
+assert.match(lab, /Video decoded \(/,
   "metadata readiness should be visible without starting analysis");
-assert.doesNotMatch(pickerHandler, /sampleVideoFrames|run\\.click\\(\\)|run\\.addEventListener/,
+assert.doesNotMatch(pickerHandler, /sampleVideoFrames|run\.click\(\)|run\.addEventListener/,
   "choosing a file must not start reconstruction");
 assert.ok(lab.indexOf('run.addEventListener("click",async()=>') < lab.indexOf("sampleVideoFrames(video"),
   "frame sampling must remain inside the explicit Analyze Video click handler");
-assert.doesNotMatch(lab, /FormData|XMLHttpRequest|fetch\\(/,
+assert.doesNotMatch(lab, /FormData|XMLHttpRequest|fetch\(/,
   "the current local-only lab must not silently upload the selected video");
 
 console.log("single-upload, decoded-video readiness, and manual-analysis tests passed");
