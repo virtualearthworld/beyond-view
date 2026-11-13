@@ -143,19 +143,26 @@ picker.addEventListener("change",()=>{
 
 const sharedVideoUrl=new URLSearchParams(window.location.search).get("video");
 if(sharedVideoUrl && sharedVideoUrl.startsWith("blob:")){
+  status.className="";
   status.textContent="Importing your original local video from the Beyond View workspace…";
-  video.src=sharedVideoUrl;
+  run.disabled=true;
+  let handoffTimer=setTimeout(()=>{
+    if(run.disabled){
+      status.textContent="The local-video handoff did not finish loading. Use Choose a video below to select the same original waterfront MOV once; the ZIP of extracted frames is not a video.";
+    }
+  },15000);
   video.onloadedmetadata=()=>{
-    focalInput.value=String(Math.round(video.videoWidth*1.2));
-    document.querySelector("#duration").textContent=video.duration.toFixed(1)+" s";
-    status.textContent="Original video imported. Starting the full local camera, track, and sparse-geometry analysis…";
-    run.disabled=false;
+    clearTimeout(handoffTimer);
+    markVideoReady("Original video imported from Beyond View.");
+    status.textContent="Original video imported. Starting camera, feature-track, and sparse-geometry analysis…";
     run.click();
   };
   video.onerror=()=>{
-    status.textContent="The original local video could not be read. Keep the Beyond View source tab open and try the handoff again.";
-    run.disabled=true;
+    clearTimeout(handoffTimer);
+    markVideoFailure("The original local video could not be read through the cross-tab handoff. Use Choose a video below to select the same original waterfront MOV once. Do not select the frames ZIP.");
   };
+  video.src=sharedVideoUrl;
+  video.load();
 }
 
 function drawSparseCloud(points){
