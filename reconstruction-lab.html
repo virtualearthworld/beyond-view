@@ -94,7 +94,8 @@ small{color:var(--muted)}a{color:var(--accent)}
  const status=document.querySelector("#status");
  let objectUrl=null;
  window.__beyondViewAnalysisReady=false;
- const syncAnalyzeButton=()=>{run.disabled=!(window.__beyondViewAnalysisReady&&picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);};
+ const syncAnalyzeButton=()=>{run.disabled=!(window.__beyondViewAnalysisReady===true&&picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);};
+ window.addEventListener("beyondview-analysis-ready",syncAnalyzeButton);
  const updateVideoReadiness=()=>{
    const usableDimensions=video.videoWidth>0&&video.videoHeight>0;
    const usableDuration=Number.isFinite(video.duration)&&video.duration>0;
@@ -408,6 +409,7 @@ run.addEventListener("click",async()=>{
   }
 });
 window.__beyondViewAnalysisReady=true;
+window.dispatchEvent(new Event("beyondview-analysis-ready"));
 run.disabled=!(picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);
 </script>
 </body>
