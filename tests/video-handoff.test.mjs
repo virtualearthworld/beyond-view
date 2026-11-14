@@ -9,6 +9,9 @@ assert.match(lab, /picker\.addEventListener\("change"/);
 assert.match(lab, /video\.src=objectUrl/);
 assert.match(lab, /window\.__beyondViewAnalysisReady=false/);
 assert.match(lab, /syncAnalyzeButton/);
+assert.ok(lab.includes("const syncAnalyzeButton=()=>{run.disabled=!(hasUsableVideo()&&window.__beyondViewAnalysisReady);};"),
+  "Analyze must remain disabled until both video metadata and the analysis engine are ready");
+assert.match(lab, /beyondview-analysis-ready/);
 assert.match(lab, /window\.__beyondViewAnalysisReady=true/);
 const pickerStart = lab.indexOf('picker.addEventListener("change"');
 const pickerEnd = lab.indexOf("\n})();", pickerStart);
@@ -34,7 +37,7 @@ assert.doesNotMatch(html, /URL\.createObjectURL|postMessage/,
   "the main workspace must not hand the selected file to a second upload flow");
 assert.match(lab, /video\.videoWidth>0&&video\.videoHeight>0&&video\.duration>0|video\.duration>0&&video\.videoWidth>0&&video\.videoHeight>0/,
   "analysis readiness must require real decoded video dimensions and duration");
-assert.match(lab, /Video decoded \(/,
+assert.match(lab, /Video ready \(/,
   "metadata readiness should be visible without starting analysis");
 assert.doesNotMatch(pickerHandler, /sampleVideoFrames|run\.click\(\)|run\.addEventListener/,
   "choosing a file must not start reconstruction");
