@@ -95,16 +95,31 @@ small{color:var(--muted)}a{color:var(--accent)}
  let objectUrl=null;
  window.__beyondViewAnalysisReady=false;
  const syncAnalyzeButton=()=>{run.disabled=!(window.__beyondViewAnalysisReady&&picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);};
- video.addEventListener("loadedmetadata",()=>{
+ const updateVideoReadiness=()=>{
    const usableDimensions=video.videoWidth>0&&video.videoHeight>0;
    const usableDuration=Number.isFinite(video.duration)&&video.duration>0;
    if(usableDimensions) focal.value=String(Math.round(video.videoWidth*1.2));
    document.querySelector("#duration").textContent=usableDuration?video.duration.toFixed(1)+" s":"—";
-   status.hidden=false;status.className="";
-   status.textContent=usableDimensions&&usableDuration
-     ? "Video decoded ("+video.videoWidth+" × "+video.videoHeight+"). Press Analyze video when you're ready."
-     : "The selected file did not provide usable video dimensions and duration.";
+   if(usableDimensions&&usableDuration){
+     status.hidden=false;status.className="";
+     status.textContent="Video ready ("+video.videoWidth+" × "+video.videoHeight+"). Press Analyze video to begin.";
+   }
    syncAnalyzeButton();
+ };
+ ["loadedmetadata","loadeddata","durationchange","canplay"].forEach(eventName=>
+   video.addEventListener(eventName,updateVideoReadiness)
+ );
+ window.addEventListener("error",event=>{
+   if(!window.__beyondViewAnalysisReady){
+     run.disabled=true;status.hidden=false;status.className="";
+     status.textContent="The analysis engine failed to load. Refresh the page and try again; if this continues, send us the browser console error.";
+   }
+ });
+ window.addEventListener("unhandledrejection",event=>{
+   if(!window.__beyondViewAnalysisReady){
+     run.disabled=true;status.hidden=false;status.className="";
+     status.textContent="The analysis engine could not start: "+(event.reason?.message||String(event.reason));
+   }
  });
  video.addEventListener("error",()=>{
    run.disabled=true;
