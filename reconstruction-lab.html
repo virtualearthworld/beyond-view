@@ -118,10 +118,17 @@ small{color:var(--muted)}a{color:var(--accent)}
  ["loadedmetadata","loadeddata","durationchange","canplay"].forEach(eventName=>
    video.addEventListener(eventName,updateVideoReadiness)
  );
+ const moduleScript=document.querySelector('script[type="module"]');
+ if(moduleScript) moduleScript.addEventListener("error",event=>{
+   run.disabled=true;status.hidden=false;status.className="";
+   status.textContent="The 3D analysis module failed to load. Check the browser console for the failed module URL or import; then share that error so we can fix the exact dependency.";
+ });
  window.addEventListener("error",event=>{
    if(!window.__beyondViewAnalysisReady){
      run.disabled=true;status.hidden=false;status.className="";
-     status.textContent="The analysis engine failed to load. Refresh the page and try again; if this continues, send us the browser console error.";
+     const detail=event.message||"Unknown JavaScript startup error";
+     const source=event.filename?(event.filename.split("/").slice(-2).join("/")+(event.lineno?":"+event.lineno:"")):"";
+     status.textContent="3D engine startup error: "+detail+(source?" ("+source+")":"")+". Share this message or the browser console error.";
    }
  });
  window.addEventListener("unhandledrejection",event=>{
