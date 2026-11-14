@@ -95,7 +95,7 @@ small{color:var(--muted)}a{color:var(--accent)}
  let objectUrl=null;
  window.__beyondViewAnalysisReady=false;
  const hasUsableVideo=()=>!!(picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);
- const syncAnalyzeButton=()=>{run.disabled=!hasUsableVideo();};
+ const syncAnalyzeButton=()=>{run.disabled=!(hasUsableVideo()&&window.__beyondViewAnalysisReady);};
  run.addEventListener("click",event=>{
    if(!window.__beyondViewAnalysisReady){
      event.preventDefault();event.stopImmediatePropagation();
