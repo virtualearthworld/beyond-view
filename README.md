@@ -24,6 +24,7 @@ Do not replace this target with a staged single-object video or a sample scene. 
 - `reconstruction-lab.html`: the only video picker and the explicit Analyze video action.
 - `reconstruction/`: first-party browser diagnostics for feature tracks, epipolar/camera-pose estimation, trajectory checks, triangulation, reprojection, point-cloud fusion, and export.
 - `immersive-engine/`: a separate packaged Gausify Orbit browser application. It is not currently wired to the Lab's selected local file, and no output from it has been verified as a reconstruction of the waterfront source video. Do not present a demo scene from it as the user's result.
+- `docs/GAUSIFY_ORBIT_COMPATIBILITY_REVIEW.md`: the current technical assessment of whether that engine can be safely integrated for the waterfront source.
 - `backend/`: a Cloudflare Worker prototype that stores uploaded files in R2 and reports `not_started`; it does not perform reconstruction. It is not configured in `config.js`. Its 25 MB limit is below the original waterfront video's approximately 37.9 MB size, so it cannot currently accept the target clip.
 
 ## What is still missing
@@ -52,4 +53,4 @@ Serve the repository root with a local web server, open `index.html`, then open 
 
 ## Current status
 
-The one-location upload and explicit analysis gate are implemented and covered by regression tests. The latest recorded reconstruction-test and Pages workflows passed on commit `74154056f5c866c2a0928ddce00bf3a3283eaf59`. The original waterfront clip has not yet passed the current browser end-to-end acceptance gate, and Beyond View is not yet a completed video-to-3D reconstruction product.
+The one-location upload and explicit analysis gate are implemented and covered by regression tests. The Analyze button now remains disabled until both the selected video is decoded and the analysis modules are ready. Reconstruction tests and GitHub Pages deployment passed on commit `305e008a33d1d06f897ad741227e142da9ef5440` ([tests](https://github.com/virtualearthworld/beyond-view/actions/runs/43623479316), [deployment](https://github.com/virtualearthworld/beyond-view/actions/runs/43623479271)). The original waterfront clip has not yet passed the current browser end-to-end acceptance gate, and Beyond View is not yet a completed video-to-3D reconstruction product.
