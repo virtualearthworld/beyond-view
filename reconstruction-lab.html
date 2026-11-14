@@ -94,7 +94,15 @@ small{color:var(--muted)}a{color:var(--accent)}
  const status=document.querySelector("#status");
  let objectUrl=null;
  window.__beyondViewAnalysisReady=false;
- const syncAnalyzeButton=()=>{run.disabled=!(window.__beyondViewAnalysisReady===true&&picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);};
+ const hasUsableVideo=()=>!!(picker.files&&picker.files.length&&video.readyState>=1&&Number.isFinite(video.duration)&&video.duration>0&&video.videoWidth>0&&video.videoHeight>0);
+ const syncAnalyzeButton=()=>{run.disabled=!hasUsableVideo();};
+ run.addEventListener("click",event=>{
+   if(!window.__beyondViewAnalysisReady){
+     event.preventDefault();event.stopImmediatePropagation();
+     status.hidden=false;status.className="";
+     status.textContent="Your video is loaded, but the 3D analysis engine has not finished loading. Check your connection and refresh; if this message persists, share the browser console error.";
+   }
+ },true);
  window.addEventListener("beyondview-analysis-ready",syncAnalyzeButton);
  const updateVideoReadiness=()=>{
    const usableDimensions=video.videoWidth>0&&video.videoHeight>0;
