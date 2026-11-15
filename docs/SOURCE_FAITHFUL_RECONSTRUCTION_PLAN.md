@@ -66,9 +66,11 @@ Maintain at least three labels: (a) static-background candidate, (b) independent
 5. **Bounded navigation demo** — a user can move between viewpoints actually supported by the clip without invented hidden scenery.
 6. **Multi-video expansion** — capture additional overlapping viewpoints to expand the navigable area and improve geometry.
 
-## Immediate next engineering task
+## Next engineering task after the camera-path audit
 
-Build the camera-and-coverage audit for the supplied clip: compute static-background candidate tracks outside the foreground people/water masks, estimate the camera path, and visualize where genuine parallax and multi-view coverage exist. This audit is the gate before selecting and tuning a 3D reconstruction backend.
+The Reconstruction Lab now derives a relative camera-center path audit from successful adjacent relative-pose edges. It keeps disconnected components separate, counts failed or missing-pose edges, and never bridges gaps. The X–Z projection is not gravity-aligned, monocular scale is unknown, and navigation remains disabled. This is a diagnostic implementation, not a fresh end-to-end result from the original waterfront video.
+
+The next gate is source-specific static-background evidence: create and inspect source-aligned masks for both people, water, and reflections; keep uncertain regions out of static geometry; and compare camera poses estimated from the conservative background candidates against the unfiltered epipolar set. Then validate calibrated trajectory stability, held-out reprojection, triangulation conditioning, and multi-view coverage before selecting a dense reconstruction stage. Homography or epipolar consistency alone must never be described as semantic proof that a track is static.
 
 ## Quality gates
 
