@@ -42,11 +42,14 @@ function validPose(pose) {
 // The trajectory stores world-to-camera transforms: Xc = R * Xw + t.
 // Therefore the camera center in the component-local world is -R^T * t.
 function cameraCenter(pose) {
-  return [0, 1, 2].map(column => -(
-    pose.rotation[0][column] * pose.translation[0] +
-    pose.rotation[1][column] * pose.translation[1] +
-    pose.rotation[2][column] * pose.translation[2]
-  ));
+  return [0, 1, 2].map(column => {
+    const value = -(
+      pose.rotation[0][column] * pose.translation[0] +
+      pose.rotation[1][column] * pose.translation[1] +
+      pose.rotation[2][column] * pose.translation[2]
+    );
+    return value === 0 ? 0 : value;
+  });
 }
 
 function boundsOf(centers) {
