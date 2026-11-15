@@ -6,6 +6,7 @@ const motion = await readFile(new URL("../reconstruction/motion-separation.js", 
 const coverage = await readFile(new URL("../reconstruction/camera-coverage.js", import.meta.url), "utf8");
 assert.match(html, /Multi-frame consistency check/);
 assert.match(html, /intervalSeconds:0\.75,maxFrames:32,width:480/);
+assert.match(html, /0\.75-second intervals \(up to 32 frames\)/);
 assert.match(html, /for\(let i=0;i<sampled\.length-1;i\+\+\)/);
 assert.match(html, /pairReports\.map\(\(p,i\)=>/);
 assert.match(html, /globally aligned or metric 3D reconstruction/);
