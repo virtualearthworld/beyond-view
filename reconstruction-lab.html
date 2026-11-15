@@ -76,10 +76,25 @@ small{color:var(--muted)}a{color:var(--accent)}
 <small id="cloud-caption">Analyze a video to try the sparse point preview.</small>
 </section>
 <section class="panel">
+<h2>Observed camera-path coverage</h2>
+<p>This plot connects camera centers only across adjacent frame pairs with successful relative-pose estimates. Failed pose gaps and disconnected components remain separate. The X–Z projection is not gravity-aligned, monocular scale is unknown, and a camera path is not a walkable surface or free-space volume.</p>
+<div class="metrics">
+<div class="metric"><strong id="coverage-components">—</strong><span>Connected pose components</span></div>
+<div class="metric"><strong id="coverage-paths">—</strong><span>Continuous observed path fragments</span></div>
+<div class="metric"><strong id="coverage-poses">—</strong><span>Camera centers with supported adjacent edges</span></div>
+<div class="metric"><strong id="coverage-gaps">—</strong><span>Failed or unsupported pose edges</span></div>
+<div class="metric"><strong id="coverage-distance">—</strong><span>Accumulated relative path length</span></div>
+<div class="metric"><strong id="coverage-navigation">Disabled</strong><span>Free navigation (not yet supported)</span></div>
+</div>
+<canvas id="coverage-stage" width="640" height="320" aria-label="Observed relative camera-center paths, separated at failed pose gaps" style="width:100%;display:block;background:#080a10;border-radius:12px"></canvas>
+<small id="coverage-caption">Analyze the original video to derive observed camera-center paths. No unsupported gap is bridged and no navigation volume is inferred.</small>
+</section>
+<section class="panel">
 <h2>What this milestone proves—and what it does not</h2>
 <ul>
 <li><b>Implemented here:</b> local frame sampling at 0.5-second intervals (up to 48 frames), corner detection, patch matching, multi-frame feature trajectory linking, camera-pose quality diagnostics, and sparse triangulation checks. Weak-parallax points below the configured minimum angle are counted and excluded from the stable sparse cloud.</li>
 <li><b>Experimental bundle adjustment:</b> robust alternating reprojection refinement jointly updates sparse landmark positions and camera translations; rotations and intrinsics remain fixed, and each component has an anchored first camera. It is not metric-scale recovery or full bundle adjustment.</li><li><b>Multi-view validation:</b> persistent tracks are triangulated from their first and last observations and reprojected into every observed frame. Raw and regularized translation paths are compared using the same tracks and assumed intrinsics; this is a diagnostic, not independent ground truth or bundle adjustment.</li><li><b>Next:</b> validate bundle adjustment on held-out observations and independent camera calibration, then improve multi-view consistency and convert reliable measured geometry into textured surfaces.</li>
+<li><b>Camera-path coverage:</b> observed camera-center edges are summarized by connected component; failed pose gaps are not bridged. The X–Z plot is not gravity-aligned and does not define a walkable region.</li>
 <li><b>Not implemented yet:</b> an end-to-end converter or a walkable 3D reconstruction. This page does not claim otherwise.</li>
 </ul>
 <p><a href="./index.html">Back to Beyond View</a></p>
@@ -180,6 +195,7 @@ import { fuseSparsePointClouds } from "./reconstruction/point-cloud-fusion.js";
 import { projectSparseCloud } from "./reconstruction/sparse-cloud-view.js";
 import { analyzeCalibrationSensitivity } from "./reconstruction/calibration-sensitivity.js";
 import { componentToAsciiPly } from "./reconstruction/point-cloud-export.js";
+import { summarizeCameraCoverage } from "./reconstruction/camera-coverage.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -189,6 +205,8 @@ const canvas=document.querySelector("#stage");
 const ctx=canvas.getContext("2d");
 const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
+const coverageCanvas=document.querySelector("#coverage-stage");
+const coverageCtx=coverageCanvas.getContext("2d");
 let cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
 function markVideoReady(){
   focalInput.value=String(Math.round(video.videoWidth*1.2));
@@ -230,6 +248,50 @@ function drawSparseCloud(points){
     cloudCtx.beginPath();cloudCtx.arc(x,y,Math.max(1.5,3.2-1.4*q)*Math.min(cloudZoom,2),0,Math.PI*2);cloudCtx.fill();
   }
   document.querySelector("#cloud-caption").textContent=view.pointCount+" accepted points from the first qualifying frame pair. Drag to rotate; scroll to zoom; Shift-drag to pan. Pair-local orientation and scale remain provisional.";
+}
+function drawCameraCoverage(coverage){
+  coverageCtx.clearRect(0,0,coverageCanvas.width,coverageCanvas.height);
+  coverageCtx.fillStyle="#aab3c5";coverageCtx.font="14px system-ui";
+  coverageCtx.fillText("Observed camera centers · relative X–Z projection",16,22);
+  const paths=Array.isArray(coverage?.paths)?coverage.paths:[];
+  const entries=paths.flatMap(path=>(path.cameraCenters||[]).map(center=>({path,center})));
+  if(!entries.length){
+    coverageCtx.fillText("No continuous camera path is supported by the estimated poses.",16,52);
+    return;
+  }
+  const positions=entries.map(entry=>entry.center.position);
+  const minX=Math.min(...positions.map(point=>point[0]));
+  const maxX=Math.max(...positions.map(point=>point[0]));
+  const minZ=Math.min(...positions.map(point=>point[2]));
+  const maxZ=Math.max(...positions.map(point=>point[2]));
+  const margin=42;
+  const spanX=Math.max(maxX-minX,1e-6);
+  const spanZ=Math.max(maxZ-minZ,1e-6);
+  const scale=Math.min((coverageCanvas.width-2*margin)/spanX,(coverageCanvas.height-2*margin)/spanZ);
+  const usedWidth=(maxX-minX)*scale,usedHeight=(maxZ-minZ)*scale;
+  const offsetX=(coverageCanvas.width-2*margin-usedWidth)/2;
+  const offsetY=(coverageCanvas.height-2*margin-usedHeight)/2;
+  const project=point=>({
+    x:margin+offsetX+(point[0]-minX)*scale,
+    y:coverageCanvas.height-margin-offsetY-(point[2]-minZ)*scale
+  });
+  const palette=["#8be9df","#f1fa8c","#ffb86c","#bd93f9","#ff79c6"];
+  for(const path of paths){
+    const color=palette[Math.abs(path.componentId)%palette.length];
+    const points=path.cameraCenters.map(center=>({frame:center.frame,...project(center.position)}));
+    coverageCtx.strokeStyle=color;coverageCtx.lineWidth=2;
+    coverageCtx.beginPath();
+    points.forEach((point,index)=>index?coverageCtx.lineTo(point.x,point.y):coverageCtx.moveTo(point.x,point.y));
+    coverageCtx.stroke();
+    for(const point of points){
+      coverageCtx.fillStyle=color;coverageCtx.beginPath();coverageCtx.arc(point.x,point.y,4,0,Math.PI*2);coverageCtx.fill();
+      coverageCtx.fillStyle="#f6f8fc";coverageCtx.font="11px system-ui";
+      coverageCtx.fillText("F"+point.frame,point.x+6,point.y-6);
+    }
+  }
+  coverageCtx.fillStyle="#aab3c5";coverageCtx.font="11px system-ui";
+  coverageCtx.fillText("X",coverageCanvas.width-20,coverageCanvas.height-12);
+  coverageCtx.fillText("Z",12,42);
 }
 cloudCanvas.addEventListener("pointerdown",event=>{cloudDrag={x:event.clientX,y:event.clientY,pan:event.shiftKey};cloudCanvas.setPointerCapture(event.pointerId);cloudCanvas.style.cursor="grabbing";});
 cloudCanvas.addEventListener("pointermove",event=>{
@@ -328,6 +390,8 @@ run.addEventListener("click",async()=>{
     const bundle=optimizeBundleAdjustment(fullClipTrajectories,regularizedTrajectory,K,{maxTracks:250,iterations:3,minObservations:3});
     const trajectory=bundle.status==="experimental-translation-landmark-bundle-adjustment"
       ? {...regularizedTrajectory,poses:bundle.poses,bundleAdjustment:bundle} : regularizedTrajectory;
+    const coverage=summarizeCameraCoverage(trajectory);
+    drawCameraCoverage(coverage);
     run.textContent="Reconstructing 3D points…";
     status.textContent="Stage 4 of 4: Reconstructing and fusing supported 3D points…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -401,6 +465,13 @@ run.addEventListener("click",async()=>{
     document.querySelector("#fusion-observations").textContent=String(fusion.acceptedObservations);
     document.querySelector("#fusion-rejected").textContent=String(fusion.rejectedObservations);
     document.querySelector("#fusion-singletons").textContent=String(fusion.filteredBySupportPointCount);
+    document.querySelector("#coverage-components").textContent=String(coverage.componentCount);
+    document.querySelector("#coverage-paths").textContent=String(coverage.pathCount);
+    document.querySelector("#coverage-poses").textContent=String(coverage.supportedPoseCount);
+    document.querySelector("#coverage-gaps").textContent=String(coverage.unsupportedSegmentCount);
+    document.querySelector("#coverage-distance").textContent=coverage.totalPathLengthUnitBaselines.toFixed(3)+" unit baselines";
+    document.querySelector("#coverage-navigation").textContent=coverage.navigation.enabled?"Enabled":"Disabled";
+    document.querySelector("#coverage-caption").textContent=coverage.limitation+" "+coverage.navigation.reason;
     document.querySelector("#calibration-note").textContent="Original-video focal length entered: "+focalLength+" px; scaled to "+analysisFocalLength.toFixed(1)+" px for analysis. Calibration remains unverified unless you supplied a calibrated value. Pose results are provisional and scale is unknown. "+trajectory.limitation;
     document.querySelector("#pair-results").innerHTML=pairReports.map((p,i)=>{
       const d=sparse.segments[i]?.diagnostics;
@@ -416,7 +487,7 @@ run.addEventListener("click",async()=>{
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
     status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). A five-assumption calibration sweep recovered poses on "+calibrationSensitivity.map(result=>result.recoveredPairs).join(", ")+ " of "+pairReports.length+" pairs respectively. Calibration remains unverified. Only points supported by at least two frame-pair clouds are retained in the fused preview; single-observation candidates are counted and filtered. Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Homography residuals are not semantic person/water detections. Sparse and multi-view geometry used only epipolar RANSAC inliers from pairs with valid poses ("+cameraModelTrackCount+" tracks); "+cameraModelResidualCount+" other tracks were held out. This is geometric consistency filtering only: moving content can still be epipolar-consistent. This is not yet a globally aligned or metric 3D reconstruction.";
+    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). A five-assumption calibration sweep recovered poses on "+calibrationSensitivity.map(result=>result.recoveredPairs).join(", ")+ " of "+pairReports.length+" pairs respectively. Calibration remains unverified. Only points supported by at least two frame-pair clouds are retained in the fused preview; single-observation candidates are counted and filtered. Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Homography residuals are not semantic person/water detections. Sparse and multi-view geometry used only epipolar RANSAC inliers from pairs with valid poses ("+cameraModelTrackCount+" tracks); "+cameraModelResidualCount+" other tracks were held out. This is geometric consistency filtering only: moving content can still be epipolar-consistent. Camera-path coverage contains "+coverage.supportedSegmentCount+" supported adjacent edges across "+coverage.componentCount+" connected components; "+coverage.unsupportedSegmentCount+" failed or unsupported edges were not bridged. Navigation remains disabled because a camera path does not establish traversable surfaces. This is not yet a globally aligned or metric 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{
     run.textContent="Analyze video";

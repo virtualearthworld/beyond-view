@@ -43,6 +43,8 @@ Good correspondence counts justify continued investigation. Low triangulation an
 
 The current Lab samples up to 32 frames at 0.75-second intervals and 480-pixel width. For pairs with a valid relative pose, sparse and multi-view geometry now use only epipolar RANSAC inliers; other tracks are kept in diagnostics but held out of geometry. This is geometric outlier filtering, not semantic people/water segmentation, and a moving feature can still pass if it follows the dominant epipolar model. This is different from the historical 40-frame/0.5-second OpenCV audit above.
 
+The Lab also derives a camera-center path audit from successful adjacent relative-pose edges. It displays connected components separately, counts failed or unsupported edges, and never bridges a pose gap. The relative X–Z projection is not gravity-aligned; monocular scale is unknown. It is a camera-coverage diagnostic only, not a walkable area or free-space map, so navigation remains disabled.
+
 ## What must be checked
 
 - How many adjacent pairs yield valid relative camera poses in the browser pipeline.

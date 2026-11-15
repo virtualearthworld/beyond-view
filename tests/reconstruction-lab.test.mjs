@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const html = await readFile(new URL("../reconstruction-lab.html", import.meta.url), "utf8");
 const motion = await readFile(new URL("../reconstruction/motion-separation.js", import.meta.url), "utf8");
+const coverage = await readFile(new URL("../reconstruction/camera-coverage.js", import.meta.url), "utf8");
 assert.match(html, /Multi-frame consistency check/);
 assert.match(html, /intervalSeconds:0\.75,maxFrames:32,width:480/);
 assert.match(html, /for\(let i=0;i<sampled\.length-1;i\+\+\)/);
@@ -75,3 +76,13 @@ assert.match(html, /linkTrackSequencesByComponent\(cameraModelPairTracks/);
 assert.match(html, /Epipolar inliers \/ other tracks/);
 assert.match(html, /moving content can still be epipolar-consistent/);
 console.log("epipolar inlier geometry-gating integration tests passed");
+
+assert.match(html, /Observed camera-path coverage/);
+assert.match(html, /summarizeCameraCoverage\(trajectory\)/);
+assert.match(html, /drawCameraCoverage\(coverage\)/);
+assert.match(html, /id="coverage-navigation"/);
+assert.match(html, /Navigation remains disabled because a camera path does not establish traversable surfaces/);
+assert.match(coverage, /gapBridgingAllowed: false/);
+assert.match(coverage, /extrapolationAllowed: false/);
+assert.match(coverage, /does not establish surface coverage/);
+console.log("observed camera-path coverage integration tests passed");
