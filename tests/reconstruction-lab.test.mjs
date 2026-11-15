@@ -81,7 +81,7 @@ assert.match(html, /Observed camera-path coverage/);
 assert.match(html, /summarizeCameraCoverage\(trajectory\)/);
 assert.match(html, /drawCameraCoverage\(coverage\)/);
 assert.match(html, /id="coverage-navigation"/);
-assert.match(html, /navigation remains disabled because a camera path does not establish traversable surfaces/);
+assert.match(html, /Navigation remains disabled because a camera path does not establish traversable surfaces/);
 assert.match(coverage, /gapBridgingAllowed: false/);
 assert.match(coverage, /extrapolationAllowed: false/);
 assert.match(coverage, /does not establish surface coverage/);
