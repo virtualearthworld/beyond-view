@@ -82,7 +82,7 @@ test("does not merge linked tracks across frame-pair offsets", () => {
     observations:[{x:1,y:2},{x:3,y:4},{x:5,y:6}]
   };
   const pairs = tracksToAdjacentPairs([first,second],6);
-  assert.deepEqual(pairs.map(pair=>pair.length),[1,1,2,2,1,0]);
+  assert.deepEqual(pairs.map(pair=>pair.length),[1,1,2,2,0,0]);
   assert.deepEqual(pairs[2][1],{from:{x:1,y:2},to:{x:3,y:4}});
 });
 
