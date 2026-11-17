@@ -20,7 +20,7 @@ assert.match(html, /optimizeBundleAdjustment\(staticGeometryReady\?geometryTrack
 assert.match(html, /evaluateMultiViewReprojection\(geometryTracksForOutput,trajectory,K/);
 assert.match(html, /id="multiview-track-count"/);
 assert.match(html, /Tracks spanning every sampled frame \(strict subset\)/);
-assert.match(html, /minimumObservations:3,minimumTriangulationAngleDegrees:2/);
+assert.match(html, /minimumObservations:4,minimumTriangulationAngleDegrees:2/);
 assert.match(html, /id="multi-view-landmark-count"/);
 assert.match(html, /id="multi-view-landmark-rejections"/);
 
