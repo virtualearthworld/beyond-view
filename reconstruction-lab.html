@@ -58,8 +58,8 @@ small{color:var(--muted)}a{color:var(--accent)}
 <section class="panel">
 <h2>Multi-frame consistency check</h2>
 <p>This compares each adjacent sampled pair across the clip. It reports feature matches, robust 2D-motion support, and perspective-model support separately. After linking contiguous tracks with at least 3 observations inside each connected camera component, the lab uses those tracks for confidence-weighted trajectory smoothing, experimental bundle adjustment, and multi-view reprojection checks. A stricter subset spanning every sampled frame is reported separately; optimization no longer depends on that unusually restrictive subset. Bundle adjustment still holds intrinsics fixed, anchors the first camera in each component, and does not recover metric scale. Reprojection triangulates each track from its first and last observations and checks its interior observations. Failed gaps are not bridged.</p>
-<div class="metrics"><div class="metric"><strong id="fusion-components">—</strong><span>Connected camera components</span></div><div class="metric"><strong id="fused-points">—</strong><span>Provisional fused points</span></div><div class="metric"><strong id="fusion-observations">—</strong><span>Accepted observations</span></div><div class="metric"><strong id="fusion-rejected">—</strong><span>Rejected observations</span></div><div class="metric"><strong id="fusion-singletons">—</strong><span>Fused points lacking multi-pair support (filtered)</span></div></div><div class="metrics"><div class="metric"><strong id="pair-count">—</strong><span>Adjacent pairs analyzed</span></div><div class="metric"><strong id="pair-strong">—</strong><span>Pairs with strong perspective support</span></div><div class="metric"><strong id="pair-weak">—</strong><span>Pairs needing review</span></div><div class="metric"><strong id="pose-segments">—</strong><span>Pairs with estimated relative pose</span></div><div class="metric"><strong id="camera-model-inliers">—</strong><span>Epipolar inlier tracks used for sparse geometry</span></div><div class="metric"><strong id="camera-model-heldout">—</strong><span>Other tracks held out (not semantic labels)</span></div><div class="metric"><strong id="trajectory-status">—</strong><span>Provisional trajectory status</span></div><div class="metric"><strong id="trajectory-regularization">—</strong><span>Translation poses adjusted by multi-frame regularization</span></div><div class="metric"><strong id="trajectory-smoothness">—</strong><span>Raw → regularized path acceleration RMS (lower is smoother, not necessarily more accurate)</span></div><div class="metric"><strong id="multiview-raw-error">—</strong><span>Raw-path multi-view median reprojection error</span></div><div class="metric"><strong id="multiview-optimized-error">—</strong><span>Regularized-path multi-view median reprojection error</span></div><div class="metric"><strong id="multiview-landmarks">—</strong><span>Persistent landmarks evaluated / skipped</span></div><div class="metric"><strong id="multiview-heldout-error">—</strong><span>Interior-view reprojection check (px / observations; not independent pose holdout)</span></div><div class="metric"><strong id="multi-view-landmark-count">—</strong><span>Validated landmarks triangulated from 3+ views</span></div><div class="metric"><strong id="multi-view-landmark-rejections">—</strong><span>Multi-view landmarks rejected by quality checks</span></div><div class="metric"><strong id="bundle-status">—</strong><span>Experimental bundle-adjustment status</span></div><div class="metric"><strong id="bundle-error">—</strong><span>Median reprojection error before → after refinement</span></div><div class="metric"><strong id="bundle-mean-error">—</strong><span>Mean reprojection error before → after refinement</span></div><div class="metric"><strong id="bundle-tracks">—</strong><span>Landmarks jointly refined</span></div><div class="metric"><strong id="sparse-points">—</strong><span>Filtered sparse 3D points (pair-local)</span></div><div class="metric"><strong id="sparse-segments">—</strong><span>Pairs with enough valid 3D points</span></div><div class="metric"><strong id="sparse-error">—</strong><span>Median 3D-point reprojection error</span></div><div class="metric"><strong id="sparse-parallax">—</strong><span>Median triangulation angle (degrees)</span></div><div class="metric"><strong id="sparse-low-parallax">—</strong><span>Weak-parallax points rejected from stable cloud</span></div></div>
-<p>For each pair with a valid relative pose, only RANSAC epipolar inliers are passed to sparse and multi-view geometry. Other tracks remain in the diagnostics and are held out of this geometry stage. This is geometric consistency filtering, not semantic people/water segmentation; a moving subject can still follow the dominant epipolar model.</p>
+<div class="metrics"><div class="metric"><strong id="fusion-components">—</strong><span>Connected camera components</span></div><div class="metric"><strong id="fused-points">—</strong><span>Provisional fused points</span></div><div class="metric"><strong id="fusion-observations">—</strong><span>Accepted observations</span></div><div class="metric"><strong id="fusion-rejected">—</strong><span>Rejected observations</span></div><div class="metric"><strong id="fusion-singletons">—</strong><span>Fused points lacking multi-pair support (filtered)</span></div></div><div class="metrics"><div class="metric"><strong id="pair-count">—</strong><span>Adjacent pairs analyzed</span></div><div class="metric"><strong id="pair-strong">—</strong><span>Pairs with strong perspective support</span></div><div class="metric"><strong id="pair-weak">—</strong><span>Pairs needing review</span></div><div class="metric"><strong id="pose-segments">—</strong><span>Pairs with estimated relative pose</span></div><div class="metric"><strong id="camera-model-inliers">—</strong><span>Raw epipolar inlier tracks before multi-view consistency filtering</span></div><div class="metric"><strong id="camera-model-heldout">—</strong><span>Other tracks held out (not semantic labels)</span></div><div class="metric"><strong id="trajectory-status">—</strong><span>Provisional trajectory status</span></div><div class="metric"><strong id="trajectory-regularization">—</strong><span>Translation poses adjusted by multi-frame regularization</span></div><div class="metric"><strong id="trajectory-smoothness">—</strong><span>Raw → regularized path acceleration RMS (lower is smoother, not necessarily more accurate)</span></div><div class="metric"><strong id="multiview-raw-error">—</strong><span>Raw-path multi-view median reprojection error</span></div><div class="metric"><strong id="multiview-optimized-error">—</strong><span>Regularized-path multi-view median reprojection error</span></div><div class="metric"><strong id="multiview-landmarks">—</strong><span>Persistent landmarks evaluated / skipped</span></div><div class="metric"><strong id="multiview-heldout-error">—</strong><span>Interior-view reprojection check (px / observations; not independent pose holdout)</span></div><div class="metric"><strong id="multi-view-landmark-count">—</strong><span>Validated landmarks triangulated from 3+ views</span></div><div class="metric"><strong id="multi-view-landmark-rejections">—</strong><span>Multi-view landmarks rejected by quality checks</span></div><div class="metric"><strong id="static-track-count">—</strong><span>Tracks passing leave-one-view-out static-scene consistency</span></div><div class="metric"><strong id="static-track-inconsistent">—</strong><span>Tracks inconsistent with one fixed 3D landmark</span></div><div class="metric"><strong id="static-track-uncertain">—</strong><span>Tracks held out for insufficient evidence</span></div><div class="metric"><strong id="static-pose-segments">—</strong><span>Pose pairs estimated from consistency-filtered tracks</span></div><div class="metric"><strong id="bundle-status">—</strong><span>Experimental bundle-adjustment status</span></div><div class="metric"><strong id="bundle-error">—</strong><span>Median reprojection error before → after refinement</span></div><div class="metric"><strong id="bundle-mean-error">—</strong><span>Mean reprojection error before → after refinement</span></div><div class="metric"><strong id="bundle-tracks">—</strong><span>Landmarks jointly refined</span></div><div class="metric"><strong id="sparse-points">—</strong><span>Filtered sparse 3D points (pair-local)</span></div><div class="metric"><strong id="sparse-segments">—</strong><span>Pairs with enough valid 3D points</span></div><div class="metric"><strong id="sparse-error">—</strong><span>Median 3D-point reprojection error</span></div><div class="metric"><strong id="sparse-parallax">—</strong><span>Median triangulation angle (degrees)</span></div><div class="metric"><strong id="sparse-low-parallax">—</strong><span>Weak-parallax points rejected from stable cloud</span></div></div>
+<p>Raw epipolar inliers are only candidates. Before geometry is exported, linked tracks are tested leave-one-observation-out: triangulate from all other views and project into the withheld view. Only tracks that pass this fixed-3D-landmark consistency check are used for a second camera-pose estimate and sparse geometry. Inconsistent and uncertain tracks are held out. This is not semantic people/water segmentation: coherent moving content can still pass, while calibration, pose, rolling-shutter, occlusion, or matching errors can reject real static structures.</p>
 <div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Features</th><th>Matches</th><th>Epipolar inliers / other tracks</th><th>2D motion support</th><th>Perspective support</th><th>3D accepted / input</th><th>3D rejection reasons</th><th>Median fit error</th><th>Pose reprojection / positive depth</th><th>Median parallax / weak points</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="12">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
@@ -196,6 +196,7 @@ import { projectSparseCloud } from "./reconstruction/sparse-cloud-view.js";
 import { analyzeCalibrationSensitivity } from "./reconstruction/calibration-sensitivity.js";
 import { componentToAsciiPly } from "./reconstruction/point-cloud-export.js";
 import { summarizeCameraCoverage } from "./reconstruction/camera-coverage.js";
+import { evaluateMultiViewTrackConsistency, tracksToAdjacentPairs } from "./reconstruction/multiview-consistency.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -369,7 +370,6 @@ run.addEventListener("click",async()=>{
       segment.status==="estimated" && Array.isArray(segment.cameraModelTracks)
         ? segment.cameraModelTracks : []
     );
-    const geometryFramePairs=framePairs.map((pair,i)=>({...pair,tracks:cameraModelPairTracks[i]}));
     const cameraModelTrackCount=cameraModelPairTracks.reduce((sum,tracks)=>sum+tracks.length,0);
     const cameraModelResidualCount=pairTracks.reduce((sum,tracks,i)=>sum+Math.max(0,tracks.length-cameraModelPairTracks[i].length),0);
     pairReports.forEach((report,i)=>{
@@ -386,8 +386,45 @@ run.addEventListener("click",async()=>{
       ?linkTrackSequencesByComponent(cameraModelPairTracks,pairComponentIds,{joinTolerancePixels:5,minObservations:3}):[];
     const fullClipTrajectories=cameraModelPairTracks.length>=2
       ?linkTrackSequencesByComponent(cameraModelPairTracks,pairComponentIds,{joinTolerancePixels:5,minObservations:pairTracks.length+1}):[];
-    const regularizedTrajectory=regularizeCameraTrajectory(rawTrajectory,multiViewTracks,{lambda:0.35,minimumObservations:3});
-    const bundle=optimizeBundleAdjustment(multiViewTracks,regularizedTrajectory,K,{maxTracks:250,iterations:3,minObservations:3});
+    const initialConsistencyAudit=evaluateMultiViewTrackConsistency(multiViewTracks,rawTrajectory,K,{
+      minimumObservations:4,minimumHeldOutObservations:2,minimumTriangulationAngleDegrees:2,
+      maxMedianReprojectionErrorPixels:2,maxP95ReprojectionErrorPixels:4,maxSingleReprojectionErrorPixels:8
+    });
+    const staticCandidatePairTracks=tracksToAdjacentPairs(initialConsistencyAudit.consistentTracks,framePairs.length);
+    const staticCandidateFramePairs=framePairs.map((pair,i)=>({...pair,tracks:staticCandidatePairTracks[i]}));
+    const staticCandidateTrajectory=initialConsistencyAudit.consistentTracks.length>=12
+      ?estimateCameraTrajectory(staticCandidateFramePairs,{K,iterations:180,thresholdPixels:2,minInliers:12,minimumPoints:8,minimumPositiveDepthRatio:0.6})
+      :null;
+    let finalConsistencyAudit=initialConsistencyAudit;
+    let geometryTracks=[];
+    let staticPoseSegmentCount=0;
+    if(staticCandidateTrajectory?.estimatedSegmentCount>0){
+      staticPoseSegmentCount=staticCandidateTrajectory.estimatedSegmentCount;
+      const staticModelPairTracks=staticCandidateTrajectory.segments.map(segment=>
+        segment.status==="estimated"&&Array.isArray(segment.cameraModelTracks)?segment.cameraModelTracks:[]
+      );
+      const staticComponentIds=staticCandidateTrajectory.segments.map(segment=>
+        segment.status==="estimated"&&Number.isInteger(segment.componentId)?segment.componentId:null
+      );
+      const staticLinkedTracks=linkTrackSequencesByComponent(staticModelPairTracks,staticComponentIds,{
+        joinTolerancePixels:5,minObservations:4
+      });
+      finalConsistencyAudit=evaluateMultiViewTrackConsistency(staticLinkedTracks,staticCandidateTrajectory,K,{
+        minimumObservations:4,minimumHeldOutObservations:2,minimumTriangulationAngleDegrees:2,
+        maxMedianReprojectionErrorPixels:2,maxP95ReprojectionErrorPixels:4,maxSingleReprojectionErrorPixels:8
+      });
+      geometryTracks=finalConsistencyAudit.consistentTracks;
+    }
+    const staticGeometryReady=!!staticCandidateTrajectory?.estimatedSegmentCount&&geometryTracks.length>=8;
+    const geometryPairTracks=tracksToAdjacentPairs(staticGeometryReady?geometryTracks:[],framePairs.length);
+    const geometryFramePairs=framePairs.map((pair,i)=>({...pair,tracks:geometryPairTracks[i]}));
+    const trajectoryBase=staticGeometryReady?staticCandidateTrajectory:rawTrajectory;
+    const regularizedTrajectory=regularizeCameraTrajectory(trajectoryBase,staticGeometryReady?geometryTracks:[],{
+      lambda:0.35,minimumObservations:4
+    });
+    const bundle=optimizeBundleAdjustment(staticGeometryReady?geometryTracks:[],regularizedTrajectory,K,{
+      maxTracks:250,iterations:3,minObservations:4
+    });
     const trajectory=bundle.status==="experimental-translation-landmark-bundle-adjustment"
       ? {...regularizedTrajectory,poses:bundle.poses,bundleAdjustment:bundle} : regularizedTrajectory;
     const coverage=summarizeCameraCoverage(trajectory);
@@ -395,16 +432,17 @@ run.addEventListener("click",async()=>{
     run.textContent="Reconstructing 3D points…";
     status.textContent="Stage 4 of 4: Reconstructing and fusing supported 3D points…";
     await new Promise(resolve=>requestAnimationFrame(resolve));
+    const geometryTracksForOutput=staticGeometryReady?geometryTracks:[];
     const sparse=reconstructSparseTrajectory(geometryFramePairs,trajectory,K,{maxReprojectionError:2,minimumPoints:8});
-    const multiViewLandmarks=reconstructMultiViewLandmarks(geometryFramePairs,multiViewTracks,trajectory,K,{
-      minimumObservations:3,minimumTriangulationAngleDegrees:2,
+    const multiViewLandmarks=reconstructMultiViewLandmarks(geometryFramePairs,geometryTracksForOutput,trajectory,K,{
+      minimumObservations:4,minimumTriangulationAngleDegrees:2,
       maxMeanReprojectionError:2,maxSingleReprojectionError:4
     });
-    const rawReprojection=evaluateMultiViewReprojection(multiViewTracks,trajectory,K,{path:"raw"});
-    const optimizedReprojection=evaluateMultiViewReprojection(multiViewTracks,trajectory,K,{path:"optimized"});
+    const rawReprojection=evaluateMultiViewReprojection(geometryTracksForOutput,trajectory,K,{path:"raw"});
+    const optimizedReprojection=evaluateMultiViewReprojection(geometryTracksForOutput,trajectory,K,{path:"optimized"});
     const fusion=fuseSparsePointClouds(sparse,trajectory,{minimumSupport:2});
     fusedComponents=fusion.components;
-    document.querySelector("#export-ply").disabled=!fusedComponents.some(component=>component.pointCount>0);
+    document.querySelector("#export-ply").disabled=!staticGeometryReady||!fusedComponents.some(component=>component.pointCount>0);
     const previewSegment=sparse.segments.find(segment=>segment.status==="sparse-points-estimated");
     drawSparseCloud(previewSegment?.points || []);
     const longestTrackFrames=fullClipTrajectories.reduce((max,t)=>Math.max(max,t.observations.length),0);
@@ -452,6 +490,10 @@ run.addEventListener("click",async()=>{
     document.querySelector("#multiview-heldout-error").textContent=optimizedReprojection.heldOutMedianReprojectionErrorPixels===null?"Need tracks with 3+ views":optimizedReprojection.heldOutMedianReprojectionErrorPixels.toFixed(2)+" px / "+optimizedReprojection.heldOutObservations+" obs";
     document.querySelector("#multi-view-landmark-count").textContent=String(multiViewLandmarks.pointCount);
     document.querySelector("#multi-view-landmark-rejections").textContent=String(Object.values(multiViewLandmarks.rejected).reduce((sum,count)=>sum+count,0));
+    document.querySelector("#static-track-count").textContent=String(geometryTracks.length);
+    document.querySelector("#static-track-inconsistent").textContent=String(finalConsistencyAudit.inconsistentTracks.length);
+    document.querySelector("#static-track-uncertain").textContent=String(finalConsistencyAudit.uncertainTracks.length);
+    document.querySelector("#static-pose-segments").textContent=String(staticPoseSegmentCount);
     document.querySelector("#bundle-status").textContent=bundle.status;
     document.querySelector("#bundle-error").textContent=bundle.initialMedianError===null?"Insufficient tracks":bundle.initialMedianError.toFixed(2)+" → "+bundle.finalMedianError.toFixed(2)+" px";
     document.querySelector("#bundle-mean-error").textContent=bundle.initialMeanError===null?"Insufficient tracks":bundle.initialMeanError.toFixed(2)+" → "+bundle.finalMeanError.toFixed(2)+" px";
@@ -487,8 +529,11 @@ run.addEventListener("click",async()=>{
     }).join("");
     drawPair(first,second,summary.tracks);
     document.querySelector("#caption").textContent="Lines connect first-frame feature locations to their matched locations in the comparison frame ("+first.time.toFixed(1)+"s → "+second.time.toFixed(1)+"s).";
-    status.className="good";
-    status.textContent="Analysis complete across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" yielded relative-pose estimates; "+sparse.validSegmentCount+" pairs yielded enough filtered 3D points ("+sparse.pointCount+" total pair-local points). A five-assumption calibration sweep recovered poses on "+calibrationSensitivity.map(result=>result.recoveredPairs).join(", ")+ " of "+pairReports.length+" pairs respectively. Calibration remains unverified. Only points supported by at least two frame-pair clouds are retained in the fused preview; single-observation candidates are counted and filtered. Points are fused only inside connected camera components; disconnected sections remain separate. Scale is unknown and accumulated drift is possible. Homography residuals are not semantic person/water detections. Sparse and multi-view geometry used only epipolar RANSAC inliers from pairs with valid poses ("+cameraModelTrackCount+" tracks); "+cameraModelResidualCount+" other tracks were held out. This is geometric consistency filtering only: moving content can still be epipolar-consistent. Camera-path coverage contains "+coverage.supportedSegmentCount+" supported adjacent edges across "+coverage.componentCount+" connected components; "+coverage.unsupportedSegmentCount+" failed or unsupported edges were not bridged. Navigation remains disabled because a camera path does not establish traversable surfaces. This is not yet a globally aligned or metric 3D reconstruction.";
+    status.className=staticGeometryReady?"good":"";
+    const geometryGateText=staticGeometryReady
+      ? "The leave-one-view-out gate retained "+geometryTracks.length+" fixed-3D-scene candidate tracks; "+finalConsistencyAudit.inconsistentTracks.length+" were inconsistent and "+finalConsistencyAudit.uncertainTracks.length+" remain uncertain."
+      : "No sufficiently supported leave-one-view-out track set passed the geometry gate, so sparse geometry and PLY export are withheld.";
+    status.textContent="Analysis finished across "+pairReports.length+" adjacent frame pairs. "+trajectory.estimatedSegmentCount+" provisional relative-pose estimates were retained. "+geometryGateText+" "+sparse.validSegmentCount+" pairs yielded "+sparse.pointCount+" accepted pair-local points. Calibration remains unverified and scale is unknown. The consistency gate is not semantic segmentation: moving people or water can still pass if their image tracks fit one fixed 3D point under the provisional camera path. Failed camera gaps remain disconnected. Fused points remain separated across connected camera components. Navigation remains disabled because a camera path does not establish traversable surfaces. This is not yet a globally aligned or metric 3D reconstruction.";
   }catch(error){status.className="";status.textContent="Analysis could not complete: "+(error?.message||String(error));}
   finally{
     run.textContent="Analyze video";
