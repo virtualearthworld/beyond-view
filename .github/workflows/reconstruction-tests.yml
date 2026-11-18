@@ -74,3 +74,5 @@ jobs:
         run: node --experimental-default-type=module --test tests/camera-coverage.test.mjs
       - name: Test 22 tests/multiview-consistency.test.mjs
         run: node --experimental-default-type=module --test tests/multiview-consistency.test.mjs
+      - name: Test 23 tests/static-scene-support.test.mjs
+        run: node --experimental-default-type=module --test tests/static-scene-support.test.mjs

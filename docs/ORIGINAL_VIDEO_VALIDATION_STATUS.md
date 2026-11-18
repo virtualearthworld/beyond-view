@@ -76,3 +76,8 @@ Run the exact existing waterfront file through the Reconstruction Lab, wait for 
 - fused point-cloud shape and exported PLY against actual source frames.
 
 Only after a recognizable, stable, source-faithful sparse reconstruction passes this gate should the project move to dense mesh/3DGS appearance reconstruction. Navigation must later be restricted to measured coverage. Unseen scenery remains unknown.
+
+
+## Distributed support gate update
+
+The Lab re-estimates camera poses from the consistent subset, repeats the track check, and then audits each connected camera component for spatial and temporal support. Only components with at least 16 consistent tracks, at least 6 of 12 image cells across 3 columns and 2 rows, and sufficient temporal coverage can feed trajectory refinement, sparse geometry, fusion, or PLY export. Unsupported components are withheld; tracks from disconnected components are not pooled. This is a coverage gate, not semantic people/water/reflection segmentation.

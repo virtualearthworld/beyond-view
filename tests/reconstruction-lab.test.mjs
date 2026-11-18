@@ -105,3 +105,19 @@ assert.match(consistency,/export function evaluateMultiViewTrackConsistency/);
 assert.match(consistency,/heldOutIndex/);
 assert.match(consistency,/not semantic segmentation/);
 console.log("leave-one-view-out static-scene geometry gate integration tests passed");
+
+
+const staticSupport = await readFile(new URL("../reconstruction/static-scene-support.js", import.meta.url), "utf8");
+assert.match(html, /assessStaticSceneTrackSupport\(geometryTracks/);
+assert.match(html, /minimumTracksPerComponent:16,minimumOccupiedCells:6/);
+assert.match(html, /supportedStaticComponentIds/);
+assert.match(html, /id="static-support"/);
+assert.match(html, /id="static-support-detail"/);
+assert.match(html, /checked per connected camera component for spatial and temporal coverage/);
+assert.ok(
+  html.indexOf("assessStaticSceneTrackSupport(geometryTracks") < html.indexOf("regularizeCameraTrajectory(trajectoryBase"),
+  "distributed support must gate tracks before trajectory refinement"
+);
+assert.match(staticSupport, /componentFrameSpanRatio/);
+assert.match(staticSupport, /not semantic object detection/);
+console.log("distributed static-scene candidate support integration test passed");
