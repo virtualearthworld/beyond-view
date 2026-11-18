@@ -113,6 +113,7 @@ assert.match(html, /minimumTracksPerComponent:16,minimumOccupiedCells:6/);
 assert.match(html, /supportedStaticComponentIds/);
 assert.match(html, /id="static-support"/);
 assert.match(html, /id="static-support-detail"/);
+assert.match(html, /checked per connected camera component for spatial and temporal coverage/);
 assert.ok(
   html.indexOf("assessStaticSceneTrackSupport(geometryTracks") < html.indexOf("regularizeCameraTrajectory(trajectoryBase"),
   "distributed support must gate tracks before trajectory refinement"
