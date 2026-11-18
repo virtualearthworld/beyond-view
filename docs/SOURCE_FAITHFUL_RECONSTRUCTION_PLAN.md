@@ -72,6 +72,12 @@ The Reconstruction Lab now derives a relative camera-center path audit from succ
 
 The Lab now adds a leave-one-observation-out fixed-3D-landmark consistency gate before sparse geometry: each linked track is triangulated from all but one view and projected into the withheld view. Tracks with insufficient evidence remain uncertain; tracks with high held-out error are excluded. A second relative-pose estimate is computed from the first-pass consistent subset, and the track gate is repeated before sparse geometry/export. This is geometric rigidity evidence, not semantic person/water segmentation. The next gate remains source-specific masks for both people, water, and reflections; compare the filtered camera path against verified calibration; inspect source-frame reprojections and parallax; then evaluate dense appearance reconstruction only if the static geometry is recognizable and stable.
 
+## Latest implementation: distributed fixed-scene candidate support gate
+
+After the leave-one-observation-out track check, each connected camera component is now audited independently for spatial and temporal evidence before its tracks can enter trajectory refinement, sparse geometry, fusion, or PLY export. The default gate requires at least 16 geometrically consistent tracks, observations spanning at least 6 of 12 image cells across at least 3 columns and 2 rows, a component span covering at least 25% of sampled frames, and at least 2 supporting tracks in at least half of that component's frames. Tracks from disconnected components are never pooled to satisfy the threshold. Unsupported components are withheld rather than exported.
+
+This is an evidence-coverage gate, not semantic segmentation or proof that a feature belongs to a building. A moving person or water pattern can still pass if it behaves like one fixed 3D point under the estimated poses and occupies enough of the image. The next source-specific gate remains exclusion masks for both people, water, and reflections, followed by verified camera calibration and inspection against original frames. See [Distributed Static-Scene Candidate Support](./DISTRIBUTED_STATIC_SCENE_SUPPORT.md).
+
 ## Quality gates
 
 Do not call the result a successful 3D world until:
