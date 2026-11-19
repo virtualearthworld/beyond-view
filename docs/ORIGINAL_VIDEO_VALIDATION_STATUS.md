@@ -81,3 +81,10 @@ Only after a recognizable, stable, source-faithful sparse reconstruction passes 
 ## Distributed support gate update
 
 The Lab re-estimates camera poses from the consistent subset, repeats the track check, and then audits each connected camera component for spatial and temporal support. Only components with at least 16 consistent tracks, at least 6 of 12 image cells across 3 columns and 2 rows, and sufficient temporal coverage can feed trajectory refinement, sparse geometry, fusion, or PLY export. Unsupported components are withheld; tracks from disconnected components are not pooled. This is a coverage gate, not semantic people/water/reflection segmentation.
+
+
+## Track-derived exclusion-mask implementation update
+
+The Lab now creates component-local, frame-specific coarse exclusion candidates from clusters of strongly multi-view-inconsistent tracks. It requires at least three such tracks in the same image cell and frame, then expands the cell by one neighbor. Otherwise-consistent tracks are withheld from static geometry only after repeated overlap (at least two observations and at least 25% of valid observations). Uncertain tracks do not seed masks, and disconnected camera components remain separate. The first-frame overlay is red and is explicitly labelled as a geometric-instability cue, not a person/water mask.
+
+This is not semantic segmentation and does not prove that every excluded region is moving. Pose errors, occlusions, reflections, water, and mismatches can all contribute; static features near a candidate cell may be withheld, and coherently moving content may still pass. The module has synthetic regression tests only. The exact IMG_1325(1).mov file has not been decoded or processed by this new stage, and no source-specific mask quality is claimed.

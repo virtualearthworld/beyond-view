@@ -121,3 +121,20 @@ assert.ok(
 assert.match(staticSupport, /componentFrameSpanRatio/);
 assert.match(staticSupport, /not semantic object detection/);
 console.log("distributed static-scene candidate support integration test passed");
+
+
+const trackExclusion = await readFile(new URL("../reconstruction/track-exclusion-mask.js", import.meta.url), "utf8");
+assert.ok(html.includes('import { buildTrackExclusionMasks, filterTracksByTrackExclusionMasks } from "./reconstruction/track-exclusion-mask.js"'));
+assert.ok(html.includes("buildTrackExclusionMasks(finalConsistencyAudit.inconsistentTracks"));
+assert.ok(html.includes("filterTracksByTrackExclusionMasks(geometryTracks,trackExclusionMasks"));
+assert.ok(html.indexOf("filterTracksByTrackExclusionMasks(geometryTracks") < html.indexOf("assessStaticSceneTrackSupport(geometryTracks"), "mask gate must run before distributed support");
+assert.ok(html.includes("drawTrackExclusionMask(trackExclusionMasks"));
+assert.ok(html.includes('id="track-exclusion-count"'));
+assert.ok(html.includes('id="track-exclusion-cells"'));
+assert.ok(html.includes('id="track-exclusion-frames"'));
+assert.ok(html.includes('id="track-exclusion-detail"'));
+assert.match(trackExclusion,/export function buildTrackExclusionMasks/);
+assert.match(trackExclusion,/export function filterTracksByTrackExclusionMasks/);
+assert.match(trackExclusion,/multi-view-inconsistent/);
+assert.match(trackExclusion,/not semantic labels/);
+console.log("component-local geometric-instability exclusion-mask integration tests passed");
