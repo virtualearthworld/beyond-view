@@ -138,3 +138,16 @@ assert.match(trackExclusion,/export function filterTracksByTrackExclusionMasks/)
 assert.match(trackExclusion,/multi-view-inconsistent/);
 assert.match(trackExclusion,/not semantic labels/);
 console.log("component-local geometric-instability exclusion-mask integration tests passed");
+
+
+const sourceFrameAuditModule = await readFile(new URL("../reconstruction/source-frame-reprojection.js", import.meta.url), "utf8");
+assert.ok(html.includes("summarizeSourceFrameReprojection(geometryTracks"));
+assert.ok(html.includes("drawSourceReprojectionFrame(0)"));
+assert.ok(html.includes('id="reprojection-frame"'));
+assert.ok(html.includes('id="reprojection-stage"'));
+assert.ok(html.includes('id="reprojection-summary"'));
+assert.ok(html.includes('id="reprojection-caption"'));
+assert.match(consistency, /heldOutProjections/);
+assert.match(sourceFrameAuditModule, /export function summarizeSourceFrameReprojection/);
+assert.match(sourceFrameAuditModule, /projectedOutsideFrame/);
+console.log("source-frame held-out reprojection inspection integration tests passed");
