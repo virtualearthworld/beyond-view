@@ -48,6 +48,10 @@ test("accepts a fixed 3D landmark using leave-one-view-out reprojection", () => 
   assert.equal(result.uncertainTracks.length,0);
   assert.ok(result.consistentTracks[0].consistency.p95ReprojectionErrorPixels < 1e-5);
   assert.equal(result.consistentTracks[0].consistency.heldOutCount,5);
+  assert.equal(result.consistentTracks[0].consistency.heldOutProjections.length,5);
+  assert.equal(result.consistentTracks[0].consistency.heldOutProjections[0].frame,0);
+  assert.equal(result.consistentTracks[0].consistency.heldOutProjections[0].componentId,0);
+  assert.ok(result.consistentTracks[0].consistency.heldOutProjections[0].errorPixels<1e-5);
 });
 
 test("rejects a moving 3D point that cannot explain withheld views", () => {

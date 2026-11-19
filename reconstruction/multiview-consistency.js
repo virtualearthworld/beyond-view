@@ -141,6 +141,7 @@ export function evaluateMultiViewTrackConsistency(tracks, trajectory, K, {
     }
 
     const heldOutErrors = [];
+    const heldOutProjections = [];
     let unusableViews = 0;
     let minimumObservedAngle = Infinity;
     for (let heldOutIndex = 0; heldOutIndex < views.length; heldOutIndex++) {
@@ -178,6 +179,13 @@ export function evaluateMultiViewTrackConsistency(tracks, trajectory, K, {
         continue;
       }
       heldOutErrors.push(error);
+      heldOutProjections.push({
+        frame: heldOut.pose.frame,
+        componentId: track.componentId,
+        observed: { x: heldOut.observation[0], y: heldOut.observation[1] },
+        projected: { x: projected[0], y: projected[1] },
+        errorPixels: error
+      });
     }
 
     if (heldOutErrors.length < minimumHeldOutObservations) {
@@ -202,6 +210,7 @@ export function evaluateMultiViewTrackConsistency(tracks, trajectory, K, {
     const maxError = Math.max(...heldOutErrors);
     const metrics = {
       heldOutCount: heldOutErrors.length,
+      heldOutProjections,
       unusableViews,
       medianReprojectionErrorPixels: medianError,
       p95ReprojectionErrorPixels: p95Error,

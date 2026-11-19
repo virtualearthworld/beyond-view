@@ -63,6 +63,13 @@ small{color:var(--muted)}a{color:var(--accent)}
 <div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Time pair</th><th>Features</th><th>Matches</th><th>Epipolar inliers / other tracks</th><th>2D motion support</th><th>Perspective support</th><th>3D accepted / input</th><th>3D rejection reasons</th><th>Median fit error</th><th>Pose reprojection / positive depth</th><th>Median parallax / weak points</th><th>Diagnostic</th></tr></thead><tbody id="pair-results"><tr><td colspan="12">Analyze a video to populate this report.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
+<h2>Source-frame reprojection inspection</h2>
+<p>For each retained track, the landmark is triangulated from its other views and projected into this held-out source frame. Green circles are measured observations; red crosses are predictions; connecting lines show pixel error. This uses the estimated camera path and assumed intrinsics, so it is not independent calibration ground truth.</p>
+<div class="actions"><label for="reprojection-frame">Sampled frame:</label><select id="reprojection-frame" disabled><option value="">Analyze a video first</option></select><strong id="reprojection-summary">—</strong></div>
+<canvas id="reprojection-stage" width="480" height="270" aria-label="Source frame with observed and held-out projected feature points" style="width:100%;display:block;background:#080a10;border-radius:12px"></canvas>
+<small id="reprojection-caption">No source-frame reprojection audit is available yet.</small>
+</section>
+<section class="panel">
 <h2>Camera calibration sensitivity</h2>
 <p>This repeats relative-pose estimation over five provisional focal-length assumptions. It does not select a focal length or claim calibration; it shows whether pose recovery is fragile when the assumed focal length changes. Inlier counts are correspondence support, not pose-accuracy scores.</p>
 <div class="pair-table-wrap"><table class="pair-table"><thead><tr><th>Focal assumption</th><th>Analysis focal length</th><th>Pairs with relative pose</th><th>Median epipolar inliers</th><th>Interpretation</th></tr></thead><tbody id="calibration-sensitivity-results"><tr><td colspan="5">Analyze a video to compare calibration assumptions.</td></tr></tbody></table></div>
@@ -199,6 +206,7 @@ import { summarizeCameraCoverage } from "./reconstruction/camera-coverage.js";
 import { evaluateMultiViewTrackConsistency, tracksToAdjacentPairs } from "./reconstruction/multiview-consistency.js";
 import { assessStaticSceneTrackSupport } from "./reconstruction/static-scene-support.js";
 import { buildTrackExclusionMasks, filterTracksByTrackExclusionMasks } from "./reconstruction/track-exclusion-mask.js";
+import { summarizeSourceFrameReprojection } from "./reconstruction/source-frame-reprojection.js";
 const picker=document.querySelector("#video-file");
 const video=document.querySelector("#video");
 const run=document.querySelector("#run");
@@ -210,6 +218,12 @@ const cloudCanvas=document.querySelector("#cloud-stage");
 const cloudCtx=cloudCanvas.getContext("2d");
 const coverageCanvas=document.querySelector("#coverage-stage");
 const coverageCtx=coverageCanvas.getContext("2d");
+const reprojectionCanvas=document.querySelector("#reprojection-stage");
+const reprojectionCtx=reprojectionCanvas.getContext("2d");
+const reprojectionFrameSelect=document.querySelector("#reprojection-frame");
+const reprojectionSummary=document.querySelector("#reprojection-summary");
+const reprojectionCaption=document.querySelector("#reprojection-caption");
+let sourceInspectionFrames=[],sourceReprojectionFrames=[];
 let cloudPoints=[], fusedComponents=[], cloudYaw=0.55, cloudPitch=-0.25, cloudZoom=1, cloudPanX=0, cloudPanY=0, cloudDrag=null;
 function markVideoReady(){
   focalInput.value=String(Math.round(video.videoWidth*1.2));
@@ -328,7 +342,30 @@ function drawTrackExclusionMask(audit,componentId,frameIndex,width,height){
   for(let i=0;i<mask.length;i++){if(!mask[i])continue;count++;const col=i%audit.columns,row=Math.floor(i/audit.columns),x=col*audit.cellSize,y=row*audit.cellSize,w=Math.min(audit.cellSize,width-x),h=Math.min(audit.cellSize,height-y);ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);}
   ctx.restore();return count;
 }
+function drawSourceReprojectionFrame(frameIndex){
+  const frame=sourceInspectionFrames[frameIndex],report=sourceReprojectionFrames[frameIndex];
+  if(!frame||!report)return;
+  reprojectionCanvas.width=frame.width;reprojectionCanvas.height=frame.height;
+  const image=reprojectionCtx.createImageData(frame.width,frame.height);
+  image.data.set(frame.rgba);reprojectionCtx.putImageData(image,0,0);
+  reprojectionCtx.lineWidth=Math.max(1,frame.width/700);
+  for(const item of report.observations){
+    const observed=item.observed,projected=item.projected;
+    reprojectionCtx.strokeStyle="rgba(255,255,255,.72)";
+    reprojectionCtx.beginPath();reprojectionCtx.moveTo(observed.x,observed.y);reprojectionCtx.lineTo(projected.x,projected.y);reprojectionCtx.stroke();
+    reprojectionCtx.fillStyle="#61f0a8";reprojectionCtx.beginPath();reprojectionCtx.arc(observed.x,observed.y,3,0,Math.PI*2);reprojectionCtx.fill();
+    reprojectionCtx.strokeStyle="#ff6878";reprojectionCtx.beginPath();reprojectionCtx.moveTo(projected.x-4,projected.y-4);reprojectionCtx.lineTo(projected.x+4,projected.y+4);reprojectionCtx.moveTo(projected.x+4,projected.y-4);reprojectionCtx.lineTo(projected.x-4,projected.y+4);reprojectionCtx.stroke();
+  }
+  const median=report.medianErrorPixels===null?"—":report.medianErrorPixels.toFixed(2)+" px";
+  const p95=report.p95ErrorPixels===null?"—":report.p95ErrorPixels.toFixed(2)+" px";
+  reprojectionSummary.textContent=report.observations.length+" held-out points · median "+median+" · p95 "+p95;
+  reprojectionCaption.textContent=report.observations.length
+    ?"Frame "+(frameIndex+1)+" at "+frame.time.toFixed(2)+" s. Green = observed; red = prediction from the other views. "+report.outsideFrameProjectionCount+" predictions fall outside this image. "+report.componentIds.length+" camera component(s) are represented. This is a geometric inspection aid, not independent calibration ground truth."
+    :"Frame "+(frameIndex+1)+" at "+frame.time.toFixed(2)+" s has no supported held-out reprojections after the geometry and exclusion gates.";
+}
+reprojectionFrameSelect.addEventListener("change",()=>drawSourceReprojectionFrame(Number(reprojectionFrameSelect.value)));
 run.addEventListener("click",async()=>{
+  reprojectionFrameSelect.disabled=true;
   run.disabled=true;run.textContent="Processing…";status.hidden=false;status.className="";status.textContent="Preparing your video…";
   try{
     await waitForVideoReady();
@@ -428,6 +465,10 @@ run.addEventListener("click",async()=>{
     });
     const supportedStaticComponentIds=new Set(staticTrackSupport.supportedComponentIds);
     geometryTracks=geometryTracks.filter(track=>supportedStaticComponentIds.has(track.componentId));
+    const sourceFrameAudit=summarizeSourceFrameReprojection(geometryTracks,{frameCount:sampled.length,frameWidth:sampled[0].width,frameHeight:sampled[0].height});
+    sourceInspectionFrames=sampled;sourceReprojectionFrames=sourceFrameAudit.frames;
+    reprojectionFrameSelect.innerHTML=sampled.map((frame,index)=>'<option value="'+index+'">Frame '+(index+1)+' · '+frame.time.toFixed(1)+' s</option>').join("");
+    reprojectionFrameSelect.disabled=false;reprojectionFrameSelect.value="0";drawSourceReprojectionFrame(0);
     staticPoseSegmentCount=staticCandidateTrajectory
       ?staticCandidateTrajectory.segments.filter(segment=>segment.status==="estimated"&&supportedStaticComponentIds.has(segment.componentId)).length
       :0;

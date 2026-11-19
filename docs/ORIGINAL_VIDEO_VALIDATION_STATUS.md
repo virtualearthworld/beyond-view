@@ -88,3 +88,10 @@ The Lab re-estimates camera poses from the consistent subset, repeats the track 
 The Lab now creates component-local, frame-specific coarse exclusion candidates from clusters of strongly multi-view-inconsistent tracks. It requires at least three such tracks in the same image cell and frame, then expands the cell by one neighbor. Otherwise-consistent tracks are withheld from static geometry only after repeated overlap (at least two observations and at least 25% of valid observations). Uncertain tracks do not seed masks, and disconnected camera components remain separate. The first-frame overlay is red and is explicitly labelled as a geometric-instability cue, not a person/water mask.
 
 This is not semantic segmentation and does not prove that every excluded region is moving. Pose errors, occlusions, reflections, water, and mismatches can all contribute; static features near a candidate cell may be withheld, and coherently moving content may still pass. The module has synthetic regression tests only. The exact IMG_1325(1).mov file has not been decoded or processed by this new stage, and no source-specific mask quality is claimed.
+
+
+## Source-frame reprojection inspection update
+
+The multi-view consistency audit now preserves each successful leave-one-observation-out prediction, including the source frame index, camera component, observed pixel, predicted pixel, and residual. Reconstruction Lab includes a frame selector and overlays measured observations in green and held-out predictions in red on the sampled source frame. The report is restricted to tracks that survive geometric exclusion and distributed-support filtering.
+
+This is an inspection aid, not independent calibration ground truth: it still uses the estimated camera path and assumed intrinsics. The original IMG_1325(1).mov has not been processed through this updated viewer, so no source-specific result is recorded.
