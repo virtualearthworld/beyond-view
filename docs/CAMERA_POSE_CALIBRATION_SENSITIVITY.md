@@ -49,3 +49,9 @@ Use only measured pixels and supported geometry from the original video. Do not 
 ## Reproduction note
 
 Measurements above were produced by a local OpenCV analysis of the uploaded source clip. They are not proof of metric depth, a globally consistent trajectory, or a navigable environment.
+
+## Browser Lab: pairwise pose-delta comparison
+
+The browser Lab now compares each provisional focal-length run with the tested focal assumption nearest the focal length entered by the user. For frame pairs where both runs produce a usable relative pose, it reports the angular change in the estimated relative rotation and translation direction (median and p95), plus the number of overlapping estimated pairs and unmatched pair counts.
+
+This is a calibration-sensitivity diagnostic, not an automatic calibration selector or an accuracy score. The comparison is local to adjacent frame pairs: it does not measure accumulated trajectory drift, recover metric scale, estimate lens distortion, correct rolling shutter, or establish that any tested focal length is correct. Similar pose estimates across focal assumptions are not ground truth. The browser Lab has not yet been run on the exact waterfront source with this comparison enabled, so no source-specific pose-delta values are reported.
