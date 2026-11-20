@@ -532,13 +532,12 @@ run.addEventListener("click",async()=>{
     document.querySelector("#pair-strong").textContent=String(strong);
     document.querySelector("#pair-weak").textContent=String(pairReports.length-strong);
     document.querySelector("#calibration-sensitivity-results").innerHTML=calibrationSensitivity.map(result=>{
-      const stable=result.recoveredPairs===result.pairCount;
       const pose=result.poseSensitivity;
       const formatDelta=(median,p95)=>median===null?"—":median.toFixed(1)+"° / "+p95.toFixed(1)+"°";
       const comparison=pose.isReference?"Reference":String(pose.comparedPairCount)+" pairs";
       const interpretation=pose.isReference?"Reference assumption":pose.comparedPairCount
         ?"Pairwise change only; not accuracy":"No shared estimated poses";
-      return "<tr><td>"+result.multiplier.toFixed(1)+" × image width</td><td>"+result.focalLengthPixels.toFixed(1)+" px</td><td>"+result.recoveredPairs+" / "+result.pairCount+"</td><td>"+(result.medianEpipolarInliers===null?"—":result.medianEpipolarInliers.toFixed(1))+"</td><td>"+comparison+"</td><td>"+formatDelta(pose.medianRotationDeltaDegrees,pose.p95RotationDeltaDegrees)+"</td><td>"+formatDelta(pose.medianTranslationDirectionDeltaDegrees,pose.p95TranslationDirectionDeltaDegrees)+"</td><td class="status-chip "+(stable?"good-text":"weak-text")+"">"+interpretation+"</td></tr>";
+      return "<tr><td>"+result.multiplier.toFixed(1)+" × image width</td><td>"+result.focalLengthPixels.toFixed(1)+" px</td><td>"+result.recoveredPairs+" / "+result.pairCount+"</td><td>"+(result.medianEpipolarInliers===null?"—":result.medianEpipolarInliers.toFixed(1))+"</td><td>"+comparison+"</td><td>"+formatDelta(pose.medianRotationDeltaDegrees,pose.p95RotationDeltaDegrees)+"</td><td>"+formatDelta(pose.medianTranslationDirectionDeltaDegrees,pose.p95TranslationDirectionDeltaDegrees)+"</td><td>"+interpretation+"</td></tr>";
     }).join("");
     const calibrationReference=calibrationSensitivity.find(result=>result.poseSensitivity.isReference);
     document.querySelector("#calibration-sensitivity-note").textContent="Pose deltas are compared with the tested focal assumption nearest the entered value ("+(calibrationReference?calibrationReference.multiplier.toFixed(1)+" × image width":"reference unavailable") +"). Median / p95 changes compare adjacent-pair rotations and translation directions only; they do not measure global drift, select calibration, recover scale, model lens distortion or rolling shutter, or prove accuracy. Similar poses across assumptions are not ground truth.";
