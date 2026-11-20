@@ -151,3 +151,11 @@ assert.match(consistency, /heldOutProjections/);
 assert.match(sourceFrameAuditModule, /export function summarizeSourceFrameReprojection/);
 assert.match(sourceFrameAuditModule, /projectedOutsideFrame/);
 console.log("source-frame held-out reprojection inspection integration tests passed");
+
+assert.match(html, /referenceFocalLengthPixels:analysisFocalLength/);
+assert.match(html, /Median \/ p95 Δ rotation/);
+assert.match(html, /Median \/ p95 Δ translation direction/);
+assert.match(html, /pose\.medianRotationDeltaDegrees/);
+assert.match(html, /pose\.medianTranslationDirectionDeltaDegrees/);
+assert.match(html, /not ground truth/);
+console.log("pairwise camera-pose calibration sensitivity integration tests passed");
