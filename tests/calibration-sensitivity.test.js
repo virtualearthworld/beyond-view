@@ -50,17 +50,18 @@ const direction = degrees => {
   const angle = degrees * Math.PI / 180;
   return [Math.cos(angle),Math.sin(angle),0];
 };
-const estimated = (rotation, translationDirection) => ({
+const estimated = (index, rotation, translationDirection) => ({
+  index,
   status:"estimated",
   pose:{rotation,translationDirection}
 });
 
 test("compares pairwise pose changes against the tested focal assumption nearest the entered value", () => {
   const byMultiplier = {
-    0.8: {segments:[estimated(zRotation(10),direction(20)),{status:"gap"}]},
-    1: {segments:[estimated(zRotation(5),direction(10)),estimated(zRotation(5),direction(10))]},
-    1.2: {segments:[estimated(identityRotation,[1,0,0]),estimated(identityRotation,[1,0,0])]},
-    1.4: {segments:[{status:"gap"},estimated(zRotation(15),direction(25))]}
+    0.8: {segments:[estimated(0,zRotation(10),direction(20)),{status:"gap"}]},
+    1: {segments:[estimated(0,zRotation(5),direction(10)),estimated(1,zRotation(5),direction(10))]},
+    1.2: {segments:[estimated(0,identityRotation,[1,0,0]),estimated(1,identityRotation,[1,0,0])]},
+    1.4: {segments:[{status:"gap"},estimated(1,zRotation(15),direction(25))]}
   };
   const results = analyzeCalibrationSensitivity([{tracks:[]},{tracks:[]}], {
     width:640,
@@ -93,7 +94,7 @@ test("compares pairwise pose changes against the tested focal assumption nearest
 test("reports missing pose overlap without inventing zero-delta stability", () => {
   const results=analyzeCalibrationSensitivity([{tracks:[]}],{
     width:640,height:360,focalMultipliers:[1,1.2],referenceFocalLengthPixels:640,
-    estimateTrajectory:(_pairs,_K,multiplier)=>({segments:[multiplier===1?estimated(identityRotation,[1,0,0]):{status:"gap"}]})
+    estimateTrajectory:(_pairs,_K,multiplier)=>({segments:[multiplier===1?estimated(0,identityRotation,[1,0,0]):{status:"gap"}]})
   });
   const missing=results.find(result=>result.multiplier===1.2).poseSensitivity;
   assert.equal(missing.status,"no-common-estimated-pairs");
