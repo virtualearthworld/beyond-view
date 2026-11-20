@@ -44,7 +44,7 @@ function directionDifferenceDegrees(first, second) {
 }
 
 function hasUsableRelativePose(segment) {
-  return segment?.status === "estimated" &&
+  return segment?.status === "estimated" && Number.isInteger(segment.index) &&
     validRotation(segment.pose?.rotation) &&
     validVector(segment.pose?.translationDirection) &&
     vectorNorm(segment.pose.translationDirection) > 1e-12;
