@@ -169,13 +169,13 @@ assert.ok(html.includes('import { buildSourceColoredMultiViewCloud } from "./rec
 assert.ok(html.includes("buildSourceColoredMultiViewCloud(multiViewLandmarks,sampled"));
 assert.ok(html.includes("validatedComponents=sourceColoredCloud.components"));
 assert.ok(html.includes("drawSparseCloud(previewComponent?.points || [])"));
-assert.doesNotMatch(html,/const previewSegment=sparse\\.segments/);
+assert.ok(!html.includes("const previewSegment=sparse.segments"));
 assert.ok(html.includes("Export validated component (.ply)"));
 assert.ok(html.includes('id="colorized-landmark-count"'));
 assert.ok(html.includes('id="uncolored-landmark-count"'));
-assert.match(trajectoryReconstructionModule,/sourceObservations: observationRecords\\.map/);
+assert.ok(trajectoryReconstructionModule.includes("sourceObservations: observationRecords.map("));
 assert.match(sourceColoredCloudModule,/sampleObservationRgb/);
 assert.match(sourceColoredCloudModule,/original decoded source frames/);
-assert.match(sparseCloudViewModule,/rgb: Array\\.isArray\\(p\\.source\\.rgb\\)/);
+assert.ok(sparseCloudViewModule.includes("rgb: Array.isArray(p.source.rgb)"));
 assert.match(pointCloudExportModule,/property uchar red/);
 console.log("source-colored multi-view landmark preview/export integration tests passed");
