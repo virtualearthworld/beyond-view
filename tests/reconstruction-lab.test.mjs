@@ -33,7 +33,7 @@ assert.match(html, /Source-colored multi-view landmark preview/);
 assert.match(html, /source frames/);
 assert.match(html, /sparse points, not textured surfaces or a dense environment/);
 assert.match(html, /id="sparse-points"/);
-assert.match(html, /Weak-parallax candidates are counted but excluded from the stable sparse cloud/);
+assert.match(html, /Weak-parallax points rejected from stable cloud/);
 assert.match(html, /id="sparse-segments"/);
 assert.match(html, /id="sparse-error"/);
 assert.match(html, /not yet a globally aligned or metric 3D reconstruction/);
