@@ -79,6 +79,11 @@ test("reconstructs a shared landmark from three camera views", () => {
   assert.ok(Math.abs(result.points[0].position[1]-point[1])<1e-6);
   assert.ok(Math.abs(result.points[0].position[2]-point[2])<1e-5);
   assert.equal(result.points[0].observations,3);
+  assert.deepEqual(result.points[0].sourceObservations,[
+    {frame:0,x:observations[0][0],y:observations[0][1]},
+    {frame:1,x:observations[1][0],y:observations[1][1]},
+    {frame:2,x:observations[2][0],y:observations[2][1]}
+  ],"accepted landmarks retain their original sampled-frame pixel observations");
   assert.equal(result.scaleKnown,false);
 });
 

@@ -269,6 +269,11 @@ export function reconstructMultiViewLandmarks(framePairs, linkedTracks, trajecto
       toFrame: observationRecords[observationRecords.length - 1].frame,
       observations: observationRecords.length,
       observedFrames: observationRecords.map(record => record.frame),
+      sourceObservations: observationRecords.map(record => ({
+        frame: record.frame,
+        x: record.observation[0],
+        y: record.observation[1]
+      })),
       meanReprojectionError,
       maxReprojectionError,
       maximumTriangulationAngleDegrees: maximumAngle,

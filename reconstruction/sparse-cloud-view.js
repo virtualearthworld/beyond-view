@@ -27,14 +27,19 @@ export function projectSparseCloud(points, { width = 640, height = 360, margin =
     x: width / 2 + (p.x - (minX + maxX) / 2) * scale,
     y: height / 2 - (p.y - (minY + maxY) / 2) * scale,
     depth: p.depth,
-    reprojectionError: Number.isFinite(p.source.reprojectionError) ? p.source.reprojectionError : null
+    reprojectionError: Number.isFinite(p.source.reprojectionError) ? p.source.reprojectionError : null,
+    rgb: Array.isArray(p.source.rgb) && p.source.rgb.length === 3 &&
+      p.source.rgb.every(Number.isFinite) ? p.source.rgb.slice() : null,
+    sourceObservationCount: Number.isInteger(p.source.colorObservationCount)
+      ? p.source.colorObservationCount : 0
   }));
+  const coordinateFrames = [...new Set(valid.map(point => point.coordinateFrame || "pair-local"))];
   return {
     points: points2d,
     bounds: { minX, maxX, minY, maxY, spanX, spanY },
     status: points2d.length >= 8 ? "preview-available" : "few-points",
     pointCount: points2d.length,
-    coordinateFrame: "pair-local",
+    coordinateFrame: coordinateFrames.length === 1 ? coordinateFrames[0] : "mixed",
     scaleKnown: false
   };
 }

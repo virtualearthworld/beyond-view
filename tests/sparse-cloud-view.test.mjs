@@ -9,6 +9,13 @@ const view = projectSparseCloud(points, { width: 640, height: 360 });
 assert.equal(view.status, "preview-available");
 assert.equal(view.pointCount, 30);
 assert.equal(view.coordinateFrame, "pair-local");
+const coloredView = projectSparseCloud([{
+  position:[1,2,3], coordinateFrame:"component-local", rgb:[12,34,56],
+  colorObservationCount:4
+}]);
+assert.equal(coloredView.coordinateFrame,"component-local");
+assert.deepEqual(coloredView.points[0].rgb,[12,34,56]);
+assert.equal(coloredView.points[0].sourceObservationCount,4);
 assert.equal(view.scaleKnown, false);
 assert.ok(view.points.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
 assert.ok(view.points.every(p => p.x >= 24 && p.x <= 616 && p.y >= 24 && p.y <= 336),
