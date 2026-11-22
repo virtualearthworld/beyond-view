@@ -50,12 +50,44 @@ assert.deepEqual(first.sourceFrames, [0, 1, 2]);
 assert.deepEqual(first.sourceTimesSeconds, [0, 0.75, 1.5]);
 assert.equal(first.coordinateFrame, "component-local");
 assert.equal(first.support, 3);
+assert.equal(first.sourceViewCount, 3);
 assert.equal(first.colorObservationCount, 3);
 assert.equal(first.meanReprojectionError, 0.4);
 const second = cloud.components.find(component => component.componentId === 1).points[0];
 assert.equal(second.rgb, null);
 assert.equal(second.colorObservationCount, 1);
 assert.deepEqual(second.position, [4, 5, 6]);
+
+const duplicateOnly = buildSourceColoredMultiViewCloud({
+  points: [{
+    position: [7, 8, 9], componentId: 0, observations: 2,
+    sourceObservations: [
+      { frame: 0, x: 2, y: 2 },
+      { frame: 0, x: 3, y: 3 },
+      { frame: 0, x: 1, y: 1 }
+    ]
+  }]
+}, sourceFrames, { minimumColorViews: 2 });
+const duplicatePoint = duplicateOnly.components[0].points[0];
+assert.equal(duplicateOnly.colorizedPointCount, 0,
+  "repeated samples from one decoded frame cannot satisfy a multi-view color requirement");
+assert.equal(duplicatePoint.colorObservationCount, 1);
+assert.equal(duplicatePoint.sourceViewCount, 1);
+assert.deepEqual(duplicatePoint.sourceFrames, [0]);
+
+const duplicateAndDistinct = buildSourceColoredMultiViewCloud({
+  points: [{
+    position: [2, 3, 4], componentId: 0, observations: 3,
+    sourceObservations: [
+      { frame: 1, x: 2, y: 2 },
+      { frame: 1, x: 1, y: 1 },
+      { frame: 2, x: 2, y: 2 }
+    ]
+  }]
+}, sourceFrames, { minimumColorViews: 2 });
+assert.equal(duplicateAndDistinct.colorizedPointCount, 1);
+assert.equal(duplicateAndDistinct.components[0].points[0].colorObservationCount, 2);
+assert.deepEqual(duplicateAndDistinct.components[0].points[0].sourceFrames, [1, 2]);
 
 const invalidOnly = buildSourceColoredMultiViewCloud({
   points: [{ position: [NaN, 0, 1], componentId: 0 }]
