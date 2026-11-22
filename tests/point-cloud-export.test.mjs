@@ -41,7 +41,7 @@ assert.match(coloredPly,/comment appearance original_source_frame_rgb_samples/);
 assert.match(coloredPly,/comment color_valid 1 means sampled source RGB; 0 means no valid source color/);
 assert.match(coloredPly,/comment colorized_points 1/);
 assert.match(coloredPly,/comment uncolored_points 1/);
-assert.ok(coloredPly.includes("1 2 3 4 3 0 2 3 0.500000000 0.900000000 11.0000000 1 12 34 56"));
+assert.ok(coloredPly.includes("1 2 3 4 3 0 2 3 0.500000000 0.900000000 11 1 12 34 56"));
 assert.ok(coloredPly.includes("2 3 4 3 1 5 5 1 0.700000000 -1 -1 0 0 0 0"),
   "uncolored geometry uses an explicitly invalid zero placeholder, not an apparent sampled color");
 console.log("source RGB PLY export tests passed");
