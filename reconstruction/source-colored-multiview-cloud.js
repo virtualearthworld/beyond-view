@@ -71,17 +71,26 @@ export function buildSourceColoredMultiViewCloud(landmarks, sourceFrames, {
       continue;
     }
 
+    // A repeated observation from the same decoded frame is still one view.
+    // Count distinct source frames so duplicate records cannot satisfy the
+    // multi-view appearance requirement by themselves.
+    const samplesByFrame = new Map();
     const sourceObservations = Array.isArray(landmark.sourceObservations)
       ? landmark.sourceObservations : [];
-    const samples = [];
     for (const observation of sourceObservations) {
       if (!Number.isInteger(observation?.frame) ||
-          observation.frame < 0 || observation.frame >= sourceFrames.length) continue;
+          observation.frame < 0 || observation.frame >= sourceFrames.length ||
+          samplesByFrame.has(observation.frame)) continue;
       const rgb = sampleObservationRgb(
         sourceFrames[observation.frame], observation, patchRadius
       );
-      if (rgb) samples.push({ frame: observation.frame, rgb });
+      if (rgb) samplesByFrame.set(observation.frame, {
+        frame: observation.frame,
+        rgb
+      });
     }
+    const samples = [...samplesByFrame.values()]
+      .sort((a, b) => a.frame - b.frame);
 
     const rgb = samples.length >= minimumColorViews
       ? [0, 1, 2].map(channel =>
@@ -93,7 +102,7 @@ export function buildSourceColoredMultiViewCloud(landmarks, sourceFrames, {
     if (!components.has(landmark.componentId)) {
       components.set(landmark.componentId, []);
     }
-    const observedFrames = [...new Set(samples.map(sample => sample.frame))].sort((a, b) => a - b);
+    const observedFrames = samples.map(sample => sample.frame);
     components.get(landmark.componentId).push({
       position: landmark.position.slice(),
       componentId: landmark.componentId,
@@ -105,6 +114,7 @@ export function buildSourceColoredMultiViewCloud(landmarks, sourceFrames, {
       sourceTimesSeconds: observedFrames
         .map(frame => sourceFrames[frame]?.time)
         .filter(Number.isFinite),
+      sourceViewCount: observedFrames.length,
       colorObservationCount: samples.length,
       meanReprojectionError: Number.isFinite(landmark.meanReprojectionError)
         ? landmark.meanReprojectionError : null,
@@ -137,7 +147,7 @@ export function buildSourceColoredMultiViewCloud(landmarks, sourceFrames, {
     patchRadius,
     scaleKnown: false,
     metricGeometry: false,
-    appearanceSource: "Median RGB samples from measured observations in original decoded source frames; no texture synthesis.",
+    appearanceSource: "Median RGB samples from distinct measured observations in original decoded source frames; no texture synthesis.",
     limitation: "These are sparse, component-local multi-view landmarks with source-sampled point colors, not a continuous texture, surface mesh, dense reconstruction, metric world model, or navigable environment."
   };
 }
